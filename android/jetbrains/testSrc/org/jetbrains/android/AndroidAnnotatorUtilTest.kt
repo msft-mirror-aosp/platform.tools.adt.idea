@@ -15,17 +15,37 @@
  */
 package org.jetbrains.android
 
+import com.android.ide.common.resources.ResourceResolver
 import com.android.resources.ResourceType
+import com.android.tools.configurations.Configuration
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.testing.onEdt
+import com.android.tools.idea.ui.resourcechooser.common.ResourcePickerSources
+import com.google.common.truth.Truth.assertThat
+import com.intellij.openapi.actionSystem.CommonDataKeys
+import com.intellij.openapi.actionSystem.impl.SimpleDataContext
+import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiElementFactory
+import com.intellij.psi.PsiFile
 import com.intellij.psi.XmlElementFactory
+import com.intellij.psi.util.PsiTreeUtil
+import com.intellij.psi.xml.XmlTag
+import com.intellij.testFramework.PlatformTestUtil.waitWithEventsDispatching
 import com.intellij.testFramework.RunsInEdt
+import com.intellij.testFramework.TestActionEvent
+import java.awt.Color
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicReference
+import org.jetbrains.android.facet.AndroidFacet
 import org.jetbrains.kotlin.psi.KtPsiFactory
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
+import org.mockito.kotlin.doAnswer
+import org.mockito.kotlin.spy
+import org.mockito.kotlin.whenever
 
 @RunsInEdt
 class AndroidAnnotatorUtilTest {
@@ -116,6 +136,151 @@ class AndroidAnnotatorUtilTest {
 
     // Verify that the current element in the consumer is the PsiElement that corresponds to the name only
     assertEquals("drawable3", task.element.text)
+  }
+
+  @Test
+  fun testColorRendererClickActionResolvesResourceResolverOffEdtAndOpensPickerOnEdt() {
+    val colorsFile =
+      projectRule.fixture.addFileToProject(
+        "res/values/colors.xml",
+        """
+        <?xml version="1.0" encoding="utf-8"?>
+        <resources>
+          <color name="colorPrimary">#112233</color>
+        </resources>
+        """
+          .trimIndent(),
+      )
+    projectRule.fixture.openFileInEditor(colorsFile.virtualFile)
+    val colorTag = PsiTreeUtil.findChildrenOfType(colorsFile, XmlTag::class.java).first { it.name == "color" }
+    val facet = AndroidFacet.getInstance(projectRule.fixture.module)!!
+
+    val invocation = clickColorRenderer(colorTag, colorsFile, color = null, hasCustomColor = true, facet = facet)
+
+    assertThat(invocation.pickConfigOnEdt).isFalse()
+    assertThat(invocation.resolverOnEdt).isFalse()
+    assertThat(invocation.openPickerOnEdt).isTrue()
+    assertThat(invocation.color).isEqualTo(Color(0x11, 0x22, 0x33))
+    assertThat(invocation.facet).isSameAs(facet)
+    assertThat(invocation.contextFile).isEqualTo(colorsFile.virtualFile)
+    assertThat(invocation.resolvedResolver).isNotNull()
+    assertThat(invocation.resolver).isSameAs(invocation.resolvedResolver)
+    assertThat(invocation.sources)
+      .containsExactly(
+        ResourcePickerSources.PROJECT,
+        ResourcePickerSources.ANDROID,
+        ResourcePickerSources.LIBRARY,
+        ResourcePickerSources.THEME_ATTR,
+      )
+      .inOrder()
+  }
+
+  @Test
+  fun testColorRendererClickActionOmitsThemeAttrForJavaFile() {
+    val javaFile =
+      projectRule.fixture.addFileToProject(
+        "src/com/example/ColorSample.java",
+        """
+        package com.example;
+        class ColorSample {}
+        """
+          .trimIndent(),
+      )
+    projectRule.fixture.openFileInEditor(javaFile.virtualFile)
+    val facet = AndroidFacet.getInstance(projectRule.fixture.module)!!
+
+    val invocation = clickColorRenderer(javaFile, javaFile, color = Color.RED, hasCustomColor = false, facet = facet)
+
+    assertThat(invocation.pickConfigOnEdt).isFalse()
+    assertThat(invocation.resolverOnEdt).isFalse()
+    assertThat(invocation.openPickerOnEdt).isTrue()
+    assertThat(invocation.color).isEqualTo(Color.RED)
+    assertThat(invocation.resolvedResolver).isNotNull()
+    assertThat(invocation.resolver).isSameAs(invocation.resolvedResolver)
+    assertThat(invocation.sources)
+      .containsExactly(ResourcePickerSources.PROJECT, ResourcePickerSources.ANDROID, ResourcePickerSources.LIBRARY)
+      .inOrder()
+  }
+
+  private data class ColorPickerInvocation(
+    val pickConfigOnEdt: Boolean?,
+    val resolverOnEdt: Boolean?,
+    val resolvedResolver: ResourceResolver?,
+    val openPickerOnEdt: Boolean?,
+    val color: Color?,
+    val facet: AndroidFacet?,
+    val contextFile: VirtualFile?,
+    val resolver: ResourceResolver?,
+    val sources: List<ResourcePickerSources>?,
+  )
+
+  private fun clickColorRenderer(
+    element: PsiElement,
+    psiFile: PsiFile,
+    color: Color?,
+    hasCustomColor: Boolean,
+    facet: AndroidFacet,
+  ): ColorPickerInvocation {
+    val pickConfigOnEdt = AtomicReference<Boolean?>()
+    val resolverOnEdt = AtomicReference<Boolean?>()
+    val resolvedResolver = AtomicReference<ResourceResolver?>()
+    val openPickerOnEdt = AtomicReference<Boolean?>()
+    val opened = AtomicBoolean(false)
+    var capturedColor: Color? = null
+    var capturedFacet: AndroidFacet? = null
+    var capturedContextFile: VirtualFile? = null
+    var capturedResolver: ResourceResolver? = null
+    var capturedSources: List<ResourcePickerSources>? = null
+
+    val renderer =
+      object : AndroidAnnotatorUtil.ColorRenderer(element, color, ResourceResolver.create(emptyMap(), null), null, hasCustomColor, facet) {
+        override fun pickConfiguration(file: PsiFile, facet: AndroidFacet): Configuration? {
+          pickConfigOnEdt.set(ApplicationManager.getApplication().isDispatchThread)
+          val configuration = super.pickConfiguration(file, facet) ?: return null
+          val spyConfig = spy(configuration)
+          doAnswer { invocation ->
+              resolverOnEdt.set(ApplicationManager.getApplication().isDispatchThread)
+              (invocation.callRealMethod() as ResourceResolver).also(resolvedResolver::set)
+            }
+            .whenever(spyConfig)
+            .resourceResolver
+          return spyConfig
+        }
+
+        override fun openColorPicker(
+          currentColor: Color?,
+          facet: AndroidFacet,
+          contextFile: VirtualFile?,
+          resourceResolver: ResourceResolver,
+          pickerSources: List<ResourcePickerSources>,
+        ) {
+          openPickerOnEdt.set(ApplicationManager.getApplication().isDispatchThread)
+          capturedColor = currentColor
+          capturedFacet = facet
+          capturedContextFile = contextFile
+          capturedResolver = resourceResolver
+          capturedSources = pickerSources
+          opened.set(true)
+        }
+      }
+
+    val dataContext =
+      SimpleDataContext.builder().add(CommonDataKeys.PSI_FILE, psiFile).add(CommonDataKeys.EDITOR, projectRule.fixture.editor).build()
+    renderer.clickAction!!.actionPerformed(TestActionEvent.createTestEvent(dataContext))
+
+    waitWithEventsDispatching("Color picker was not opened", opened::get, 10)
+
+    return ColorPickerInvocation(
+      pickConfigOnEdt = pickConfigOnEdt.get(),
+      resolverOnEdt = resolverOnEdt.get(),
+      resolvedResolver = resolvedResolver.get(),
+      openPickerOnEdt = openPickerOnEdt.get(),
+      color = capturedColor,
+      facet = capturedFacet,
+      contextFile = capturedContextFile,
+      resolver = capturedResolver,
+      sources = capturedSources,
+    )
   }
 
   private fun createJavaElement(text: String) = PsiElementFactory.getInstance(project).createExpressionFromText(text, null)

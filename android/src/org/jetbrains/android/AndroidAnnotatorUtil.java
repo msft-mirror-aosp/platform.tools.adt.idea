@@ -31,6 +31,7 @@ import com.android.ide.common.resources.configuration.FolderConfiguration;
 import com.android.resources.Density;
 import com.android.resources.ResourceType;
 import com.android.tools.configurations.Configuration;
+import com.android.tools.idea.configurations.ConfigurationFileUtil;
 import com.android.tools.idea.configurations.ConfigurationManager;
 import com.android.tools.res.FileResourceReader;
 import com.android.tools.idea.res.IdeResourcesUtil;
@@ -401,12 +402,24 @@ public class AndroidAnnotatorUtil {
           if (editor == null) return;
 
           ApplicationManager.getApplication().executeOnPooledThread(() -> {
-            Configuration configuration = ApplicationManager.getApplication().runReadAction(
-              (Computable<Configuration>)() -> AndroidAnnotatorUtil.pickConfiguration(file, facet)
-            );
-            if (configuration != null) {
-              ApplicationManager.getApplication().invokeLater(() -> openColorPicker(getCurrentColor(), configuration), ModalityState.any());
-            }
+            Configuration configuration = ApplicationManager.getApplication().runReadAction((Computable<Configuration>)() -> {
+              if (!file.isValid() || !myElement.isValid()) return null;
+              return pickConfiguration(file, facet);
+            });
+            if (configuration == null) return;
+
+            ResourceResolver resourceResolver = configuration.getResourceResolver();
+            VirtualFile contextFile = ConfigurationFileUtil.getVirtualFile(configuration);
+
+            ApplicationManager.getApplication().runReadAction(() -> {
+              if (!myElement.isValid()) return;
+              Color currentColor = getCurrentColor();
+              List<ResourcePickerSources> pickerSources = createPickerSources();
+              ApplicationManager.getApplication().invokeLater(
+                () -> openColorPicker(currentColor, facet, contextFile, resourceResolver, pickerSources),
+                ModalityState.any(),
+                myProject.getDisposed());
+            });
           });
         }
       };
@@ -418,7 +431,14 @@ public class AndroidAnnotatorUtil {
       return myElement;
     }
 
-    private void openColorPicker(@Nullable Color currentColor, @NotNull Configuration configuration) {
+    @VisibleForTesting
+    @Nullable
+    Configuration pickConfiguration(@NotNull PsiFile file, @NotNull AndroidFacet facet) {
+      return AndroidAnnotatorUtil.pickConfiguration(file, facet);
+    }
+
+    @NotNull
+    private List<ResourcePickerSources> createPickerSources() {
       List<ResourcePickerSources> pickerSources = new ArrayList<>();
       pickerSources.add(ResourcePickerSources.PROJECT);
       pickerSources.add(ResourcePickerSources.ANDROID);
@@ -427,12 +447,22 @@ public class AndroidAnnotatorUtil {
         // We can only support theme attributes for Xml files, since we can't substitute R.color.[resource_name] for a theme attribute.
         pickerSources.add(ResourcePickerSources.THEME_ATTR);
       }
+      return pickerSources;
+    }
 
+    @VisibleForTesting
+    void openColorPicker(@Nullable Color currentColor,
+                         @NotNull AndroidFacet facet,
+                         @Nullable VirtualFile contextFile,
+                         @NotNull ResourceResolver resourceResolver,
+                         @NotNull List<ResourcePickerSources> pickerSources) {
       // TODO: When the color is color state, open color picker with resource tab and select it.
       ResourceChooserHelperKt.createAndShowColorPickerPopup(
         currentColor,
         myResourceValue,
-        configuration,
+        facet,
+        contextFile,
+        resourceResolver,
         pickerSources,
         null,
         MouseInfo.getPointerInfo().getLocation(),

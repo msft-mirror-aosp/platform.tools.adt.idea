@@ -334,17 +334,6 @@
     <issue
         id="WrongThread"
         message="Call must be from `@{Slow,WorkerThread}`, but the work passed to `invokeLater` is expected to run from `@UiThread`"
-        errorLine1="              ApplicationManager.getApplication().invokeLater(() -> openColorPicker(getCurrentColor(), configuration), ModalityState.any());"
-        errorLine2="                                                                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/org/jetbrains/android/AndroidAnnotatorUtil.java"
-            line="410"
-            column="69"/>
-    </issue>
-
-    <issue
-        id="WrongThread"
-        message="Call must be from `@{Slow,WorkerThread}`, but the work passed to `invokeLater` is expected to run from `@UiThread`"
         errorLine1="            AndroidFindStyleApplicationsAction.doRefactoringForTag("
         errorLine2="                                               ^">
         <location
