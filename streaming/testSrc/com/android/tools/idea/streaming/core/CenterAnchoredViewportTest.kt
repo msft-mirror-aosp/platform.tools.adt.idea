@@ -25,6 +25,7 @@ import com.intellij.ui.components.JBScrollPane
 import java.awt.Adjustable
 import java.awt.Dimension
 import java.awt.Point
+import java.awt.Rectangle
 import javax.swing.BorderFactory
 import javax.swing.JPanel
 import javax.swing.JScrollBar
@@ -178,6 +179,40 @@ class CenterAnchoredViewportTest {
     //              = (15, 25) + (200 - 100, 400 - 150) / 2 = (15, 25) + (50, 125) = (65, 150)
     assertThat(freshViewport.viewPosition).isEqualTo(Point(65, 150))
     assertThat(freshViewport.viewCenterOffset).isEqualTo(Point(15, 25))
+  }
+
+  @Test
+  fun testScrollingAfterZoomOutAtOriginAndScrollRectToVisible() {
+    // Zoom in to 400%, then scroll to origin (0, 0).
+    view.preferredSize = Dimension(400, 800)
+    ui.layoutAndDispatchEvents()
+    scrollPane.horizontalScrollBar.value = 0
+    scrollPane.verticalScrollBar.value = 0
+    assertThat(viewport.viewPosition).isEqualTo(Point(0, 0))
+
+    // Zoom out to 200% while already at (0, 0) (so JViewport.setViewSize resets scrollUnderway = false
+    // without changing viewPosition).
+    view.preferredSize = Dimension(200, 400)
+    ui.layoutAndDispatchEvents()
+    assertThat(viewport.viewPosition).isEqualTo(Point(0, 0))
+
+    // Scrolling via scrollbars and via setViewPosition must still update viewPosition.
+    scrollPane.horizontalScrollBar.value = 30
+    scrollPane.verticalScrollBar.value = 80
+    assertThat(viewport.viewPosition).isEqualTo(Point(30, 80))
+
+    viewport.viewPosition = Point(45, 110)
+    assertThat(viewport.viewPosition).isEqualTo(Point(45, 110))
+    assertThat(scrollPane.horizontalScrollBar.value).isEqualTo(45)
+    assertThat(scrollPane.verticalScrollBar.value).isEqualTo(110)
+
+    // scrollRectToVisible also resets JViewport.scrollUnderway = false; subsequent scrolling must still work.
+    view.scrollRectToVisible(Rectangle(0, 0, 10, 10))
+    assertThat(viewport.viewPosition).isEqualTo(Point(0, 0))
+
+    scrollPane.horizontalScrollBar.value = 25
+    scrollPane.verticalScrollBar.value = 60
+    assertThat(viewport.viewPosition).isEqualTo(Point(25, 60))
   }
 
   private inner class TestScrollPane : JBScrollPane(0) {

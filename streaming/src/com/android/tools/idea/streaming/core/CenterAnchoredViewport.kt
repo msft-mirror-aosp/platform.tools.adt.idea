@@ -96,7 +96,7 @@ class CenterAnchoredViewport : JBViewport() {
   private fun computeCorrectedViewPosition(newViewSize: Dimension): Point {
     val viewPosition = viewPosition
     val view = view ?: return viewPosition
-    if (scrollUnderway && !layoutUnderway || resizingUnderway) {
+    if (resizingUnderway) {
       return viewPosition
     }
     val oldViewWidth = view.width.toDouble()
@@ -133,7 +133,7 @@ class CenterAnchoredViewport : JBViewport() {
 
   private fun computeCorrectedViewPosition(newViewPosition: Point): Point {
     val view = view ?: return newViewPosition
-    if ((scrollUnderway && !layoutUnderway) || !view.isPreferredSizeSet) {
+    if (!layoutUnderway || !view.isPreferredSizeSet) {
       return newViewPosition
     }
     val viewPosition = viewPosition
