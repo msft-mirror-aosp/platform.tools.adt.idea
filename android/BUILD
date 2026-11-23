@@ -318,6 +318,7 @@ iml_module(
         "@intellij//:intellij.libraries.kotlinc.analysis.api",
         "@intellij//:intellij.libraries.kotlinc.analysis.api.platform.interface",
         "@intellij//:intellij.platform.externalSystem",
+        "@intellij//:org.intellij.plugins.markdown",
     ],
     test_friends = ["//tools/adt/idea/android:intellij.android.core"],
     test_jvm_flags = [

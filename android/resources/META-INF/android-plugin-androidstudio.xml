@@ -44,6 +44,10 @@
     <registryKey overrides="true" key="terminal.agent.predefined.actions.enabled" defaultValue="false"
                  description="Show AI agent actions in the terminal title and predefined terminal sessions"/>
 
+    <!-- Enable Compose-based Markdown preview renderer in Android Studio since JCEF is not bundled (b/588514732). Tested by AndroidStudioMarkdownPreviewTest. -->
+    <registryKey overrides="true" key="enable.markdown.compose.preview.renderer.choice" defaultValue="true"
+                 description="Add possibility to render Markdown Preview using Compose instead of JCEF (experimental feature, many inlines are unsupported yet)."/>
+
     <welcomeScreen implementation="com.android.tools.idea.welcome.wizard.AndroidStudioWelcomeScreenProvider"/>
 
     <codeStyleSettingsProvider implementation="org.jetbrains.android.formatter.AndroidStudioCodeStyleSettingsProvider" order="last"/>
