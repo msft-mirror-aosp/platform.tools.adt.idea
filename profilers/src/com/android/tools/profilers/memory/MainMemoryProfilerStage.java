@@ -804,9 +804,11 @@ public class MainMemoryProfilerStage extends BaseStreamingMemoryProfilerStage im
         if (!getCaptureSelection().selectCaptureEntry(durationData.getCaptureEntry())) {
           return;
         }
-        String deviceSerial = getSelectedDeviceSerial();
-        // Read the session here, so the saved file's name, its transport request and its metadata all use the same one.
-        Common.Session session = profilers.getSession();
+        // The saved file's name, its transport request, its metadata and its device's R8 mapping all use the session this stage recorded
+        // the capture in. Taking a heap dump or stopping a recording ends that session, so the selected one may have ended by now and
+        // would describe the recording as a past one, or another session may be selected.
+        Common.Session session = getSessionData();
+        String deviceSerial = getDeviceSerial(session);
         profilers.getIdeServices().getPoolExecutor().execute(() -> {
           CaptureObject capture = durationData.getCaptureEntry().getCaptureObject();
           String extension = capture.getExportableExtension() != null ? capture.getExportableExtension() : "alloc";
@@ -914,8 +916,8 @@ public class MainMemoryProfilerStage extends BaseStreamingMemoryProfilerStage im
   }
 
   @NotNull
-  private String getSelectedDeviceSerial() {
-    Common.Stream stream = getStudioProfilers().getStream(getStudioProfilers().getSession().getStreamId());
+  private String getDeviceSerial(@NotNull Common.Session session) {
+    Common.Stream stream = getStudioProfilers().getStream(session.getStreamId());
     return stream.getType() == Common.Stream.Type.DEVICE ? stream.getDevice().getSerial() : "";
   }
 

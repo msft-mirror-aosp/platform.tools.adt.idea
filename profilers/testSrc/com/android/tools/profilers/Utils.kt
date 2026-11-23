@@ -18,9 +18,12 @@ package com.android.tools.profilers
 import com.android.tools.adtui.model.FakeTimer
 import com.android.tools.idea.transport.faketransport.FakeTransportService
 import com.android.tools.profiler.proto.Common
+import com.android.tools.profiler.proto.ProfilerTaskMetadataProto.ProfilerTaskMetadata
 import com.android.tools.profilers.tasks.ProfilerTaskType
 import com.android.tools.profilers.tasks.taskhandlers.singleartifact.LiveTaskHandler
+import com.android.tools.profilers.utils.ProfilerHashUtils
 import com.intellij.openapi.application.ApplicationManager
+import java.io.File
 
 interface WithFakeTimer {
   val timer: FakeTimer
@@ -100,5 +103,13 @@ object Utils {
     val device = profilers.deviceProcessMap.keys.first { it.deviceId == FakeTransportService.FAKE_DEVICE_ID }
     val process = profilers.deviceProcessMap[device]!!.first { it.pid == FakeTransportService.FAKE_PROCESS.pid }
     startSession(profilers, timer, device, process)
+  }
+
+  /** Reads the metadata file saved next to [recording], a recording that opened in the editor. */
+  @JvmStatic
+  fun readRecordingMetadata(recording: File): ProfilerTaskMetadata {
+    val metadataFile =
+      File(recording.absoluteFile.parentFile, "${recording.nameWithoutExtension}-${ProfilerHashUtils.hashTracePath(recording)}.metadata")
+    return ProfilerTaskMetadata.parseFrom(metadataFile.readBytes())
   }
 }

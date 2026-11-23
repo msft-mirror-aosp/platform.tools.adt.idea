@@ -224,14 +224,14 @@ public class CpuProfiler implements StudioProfiler {
   }
 
   /**
-   * Gets the trace info for a given trace id.
+   * Gets the trace info for a given trace id, recorded in {@code session}.
    * This function only uses the unified pipeline.
    */
   @NotNull
-  public static TraceInfo getTraceInfoFromId(@NotNull StudioProfilers profilers, long traceId) {
+  public static TraceInfo getTraceInfoFromId(@NotNull StudioProfilers profilers, @NotNull Common.Session session, long traceId) {
     Transport.GetEventGroupsResponse response = profilers.getClient().getTransportClient().getEventGroups(
       Transport.GetEventGroupsRequest.newBuilder()
-        .setStreamId(profilers.getSession().getStreamId())
+        .setStreamId(session.getStreamId())
         .setKind(Common.Event.Kind.CPU_TRACE)
         .setGroupId(traceId)
         .build());

@@ -28,6 +28,7 @@ import com.android.tools.idea.transport.faketransport.FakeGrpcChannel;
 import com.android.tools.idea.transport.faketransport.FakeTransportService;
 import com.android.tools.profiler.proto.Common;
 import com.android.tools.profiler.proto.Cpu;
+import com.android.tools.profiler.proto.ProfilerTaskMetadataProto.ProfilerTaskMetadata;
 import com.android.tools.profiler.proto.Trace;
 import com.android.tools.profilers.FakeFeatureTracker;
 import com.android.tools.profilers.FakeIdeProfilerServices;
@@ -539,6 +540,20 @@ public final class CpuProfilerStageTest extends AspectObserver {
     assertThat(myServices.getOpenedFile()).isNotNull();
     assertThat(myServices.getOpenedFile().getName()).matches("system-trace-\\d{8}T\\d{6}\\.trace");
     assertThat(myServices.getClosedTaskTab()).isEqualTo(com.android.tools.profilers.tasks.ProfilerTaskType.SYSTEM_TRACE);
+  }
+
+  @Test
+  public void recordingOpenedInEditorIsDescribedAsNewAfterStoppingEndsItsSession() throws Exception {
+    myServices.setShouldProceedYesNoDialog(true);
+    myServices.setMethodTraceInEditorEnabled(true);
+    myStage.getProfilerConfigModel().setProfilingConfiguration(ArtInstrumentedConfiguration.create("My Config", true));
+    CpuProfilerTestUtils.captureSuccessfully(myStage, myTransportService, CpuProfilerTestUtils.readValidTrace());
+
+    // Stopping the recording also ended its session.
+    assertThat(SessionsManager.isSessionAlive(myStage.getStudioProfilers().getSession())).isFalse();
+    ProfilerTaskMetadata metadata = Utils.readRecordingMetadata(myServices.getOpenedFile());
+    assertThat(metadata.getTaskDataOrigin()).isEqualTo(ProfilerTaskMetadata.TaskDataOrigin.NEW);
+    assertThat(metadata.getTaskAttachmentPoint()).isEqualTo(ProfilerTaskMetadata.TaskAttachmentPoint.EXISTING_PROCESS);
   }
 
   @Test

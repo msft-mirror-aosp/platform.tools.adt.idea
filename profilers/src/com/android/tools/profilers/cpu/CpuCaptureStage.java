@@ -36,6 +36,7 @@ import com.android.tools.adtui.model.trackgroup.TrackModel;
 import com.android.tools.adtui.model.updater.Updater;
 import com.android.tools.idea.flags.enums.PowerProfilerDisplayMode;
 import com.android.tools.profiler.perfetto.proto.TraceProcessor;
+import com.android.tools.profiler.proto.Common;
 import com.android.tools.profiler.proto.Trace;
 import com.android.tools.profilers.IdeProfilerServices;
 import com.android.tools.profilers.LogUtils;
@@ -182,28 +183,29 @@ public class CpuCaptureStage extends Stage<Timeline> {
   public static CpuCaptureStage create(@NotNull StudioProfilers profilers, @NotNull ProfilingConfiguration configuration, long traceId) {
     CpuCaptureMetadata metadata = new CpuCaptureMetadata(configuration);
     metadata.setCpuProfilerEntryPoint(CpuCaptureMetadata.CpuProfilerEntryPoint.UNKNOWN);
-    return create(profilers, configuration, metadata, traceId);
+    return create(profilers, profilers.getSession(), configuration, metadata, traceId);
   }
 
   /**
-   * Create a capture stage that loads a given trace id. If a trace id is not found null will be returned.
+   * Create a capture stage that loads a given trace id, recorded in {@code session}. If a trace id is not found null will be returned.
    * Takes in the entry point as a parameter to track how the user got to the CpuProfilerStage. The entry
    * point is tracked only when a recording is being captured.
    */
   @Nullable
   public static CpuCaptureStage create(@NotNull StudioProfilers profilers,
+                                       @NotNull Common.Session session,
                                        @NotNull ProfilingConfiguration configuration,
                                        @NotNull CpuCaptureMetadata captureMetadata,
                                        long traceId) {
     File captureFile;
 
     boolean openInEditor = ProfilerInEditorUtils.isEditorEnabled(profilers.getIdeServices().getFeatureConfig(), configuration.getTraceType().toTaskType());
-    Trace.TraceInfo traceInfo = CpuProfiler.getTraceInfoFromId(profilers, traceId);
+    Trace.TraceInfo traceInfo = CpuProfiler.getTraceInfoFromId(profilers, session, traceId);
 
     if (openInEditor && !Trace.TraceInfo.getDefaultInstance().equals(traceInfo)) {
-      captureFile = ProfilerCaptureFileUtils.getAndRenameCapture(profilers, profilers.getSession(), traceInfo);
+      captureFile = ProfilerCaptureFileUtils.getAndRenameCapture(profilers, session, traceInfo);
     } else {
-      captureFile = ProfilerCaptureFileUtils.getCaptureAsFile(profilers, traceId);
+      captureFile = ProfilerCaptureFileUtils.getCaptureAsFile(profilers, session, traceId);
     }
 
     if (captureFile == null) {
@@ -212,7 +214,7 @@ public class CpuCaptureStage extends Stage<Timeline> {
 
     String captureProcessNameHint = traceInfo.getConfiguration().getAppName();
     return new CpuCaptureStage(profilers, configuration, captureMetadata, captureFile, traceId, captureProcessNameHint,
-                               profilers.getSession().getPid());
+                               session.getPid());
   }
 
   @NotNull

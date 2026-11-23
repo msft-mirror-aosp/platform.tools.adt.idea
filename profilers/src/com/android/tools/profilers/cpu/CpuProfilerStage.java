@@ -409,9 +409,10 @@ CpuProfilerStage extends StreamingStage implements InterimStage {
           ProfilerTaskType taskType = traceType.toTaskType();
           boolean openInEditor = ProfilerInEditorUtils.isEditorEnabled(getStudioProfilers().getIdeServices().getFeatureConfig(), taskType);
 
+          // Use the session this stage recorded the trace in, not the selected one: stopping the recording ends that session, so by now
+          // the selected session may have ended, which would describe the recording as a past one, or may be another session.
           if (openInEditor) {
-            File captureFile =
-              ProfilerCaptureFileUtils.getAndRenameCapture(getStudioProfilers(), getStudioProfilers().getSession(), traceInfo);
+            File captureFile = ProfilerCaptureFileUtils.getAndRenameCapture(getStudioProfilers(), mySession, traceInfo);
             getStudioProfilers().getIdeServices().getMainExecutor().execute(() -> {
               if (captureFile != null && captureFile.exists() && captureFile.length() > 0) {
                 getStudioProfilers().getIdeServices().openTraceFile(captureFile);
@@ -427,7 +428,8 @@ CpuProfilerStage extends StreamingStage implements InterimStage {
             return Pair.create((CpuCaptureStage) null, true);
           }
 
-          CpuCaptureStage stage = CpuCaptureStage.create(getStudioProfilers(), config, getCpuCaptureMetadata(config, traceInfo), traceId);
+          CpuCaptureStage stage =
+            CpuCaptureStage.create(getStudioProfilers(), mySession, config, getCpuCaptureMetadata(config, traceInfo), traceId);
           return Pair.create(stage, false);
         },
         result -> {

@@ -194,8 +194,8 @@ object ProfilerCaptureFileUtils {
   }
 
   @JvmStatic
-  fun getCaptureAsFile(profilers: StudioProfilers, traceId: Long): File? {
-    val traceRequest = Transport.BytesRequest.newBuilder().setStreamId(profilers.session.streamId).setId(traceId.toString()).build()
+  fun getCaptureAsFile(profilers: StudioProfilers, session: Common.Session, traceId: Long): File? {
+    val traceRequest = Transport.BytesRequest.newBuilder().setStreamId(session.streamId).setId(traceId.toString()).build()
     val traceResponse = profilers.client.transportClient.getFile(traceRequest)
     if (traceResponse.filePath.isEmpty()) return null
     val captureFile = File(traceResponse.filePath)
@@ -207,10 +207,12 @@ object ProfilerCaptureFileUtils {
    * Fetches the file of the CPU recording described by [traceInfo], a System Trace, Java/Kotlin Method Recording or Callstack Sample, and
    * moves it to the file from [getCpuRecordingFile], so it can open in the editor. If a non-empty file is already there, returns it as is.
    * Returns null if the recording's file can't be fetched or moved.
+   *
+   * @param session the session the recording was made in, as taken while it was live; see [writeMetadataToFile]
    */
   @JvmStatic
   fun getAndRenameCapture(profilers: StudioProfilers, session: Common.Session, traceInfo: Trace.TraceInfo): File? {
-    val captureFile = getCaptureAsFile(profilers, traceInfo.traceId) ?: return null
+    val captureFile = getCaptureAsFile(profilers, session, traceInfo.traceId) ?: return null
     val targetFile = getCpuRecordingFile(session, profilers.sessionsManager.getSessionMetaData(session.sessionId), traceInfo)
     val finalFile = renameToTargetFile(captureFile, targetFile) ?: return null
     writeMetadataToFile(profilers, session, finalFile)
@@ -227,6 +229,9 @@ object ProfilerCaptureFileUtils {
   /**
    * Writes a sidecar file containing serialized task metadata alongside the trace file, in the same folder. This metadata is used by
    * standalone editors to reconstruct telemetry dashboards accurately safely.
+   *
+   * @param session the session the recording was made in, as taken while it was live. Stopping a recording ends its session, so by the time
+   *   the recording is saved the selected session may have ended, and would describe a new recording as a past one.
    */
   @JvmStatic
   fun writeMetadataToFile(profilers: StudioProfilers, session: Common.Session, file: File) {
@@ -243,8 +248,8 @@ object ProfilerCaptureFileUtils {
         val taskMetadata =
           ProfilerTaskMetadataProto.ProfilerTaskMetadata.newBuilder()
             .setSessionMetadata(metadata)
-            .setTaskDataOrigin(resolveDataOrigin(sessionsManager, session))
-            .setTaskAttachmentPoint(resolveAttachmentPoint(sessionsManager))
+            .setTaskDataOrigin(resolveDataOrigin(session))
+            .setTaskAttachmentPoint(resolveAttachmentPoint(session, metadata))
             .build()
 
         metadataFile.outputStream().use { output -> taskMetadata.writeTo(output) }
@@ -254,22 +259,22 @@ object ProfilerCaptureFileUtils {
     }
   }
 
-  private fun resolveDataOrigin(
-    sessionsManager: SessionsManager,
-    session: Common.Session,
-  ): ProfilerTaskMetadataProto.ProfilerTaskMetadata.TaskDataOrigin {
+  private fun resolveDataOrigin(session: Common.Session): ProfilerTaskMetadataProto.ProfilerTaskMetadata.TaskDataOrigin {
     return when {
-      sessionsManager.isSessionAlive -> ProfilerTaskMetadataProto.ProfilerTaskMetadata.TaskDataOrigin.NEW
+      SessionsManager.isSessionAlive(session) -> ProfilerTaskMetadataProto.ProfilerTaskMetadata.TaskDataOrigin.NEW
       SessionsManager.isSessionImported(session) -> ProfilerTaskMetadataProto.ProfilerTaskMetadata.TaskDataOrigin.IMPORTED
       session != Common.Session.getDefaultInstance() -> ProfilerTaskMetadataProto.ProfilerTaskMetadata.TaskDataOrigin.PAST_RECORDING
       else -> ProfilerTaskMetadataProto.ProfilerTaskMetadata.TaskDataOrigin.ORIGIN_UNSPECIFIED
     }
   }
 
-  private fun resolveAttachmentPoint(sessionsManager: SessionsManager): ProfilerTaskMetadataProto.ProfilerTaskMetadata.TaskAttachmentPoint {
+  private fun resolveAttachmentPoint(
+    session: Common.Session,
+    metadata: Common.SessionMetaData,
+  ): ProfilerTaskMetadataProto.ProfilerTaskMetadata.TaskAttachmentPoint {
     return when {
-      !sessionsManager.isSessionAlive -> ProfilerTaskMetadataProto.ProfilerTaskMetadata.TaskAttachmentPoint.ATTACHMENT_UNSPECIFIED
-      sessionsManager.isCurrentTaskStartup -> ProfilerTaskMetadataProto.ProfilerTaskMetadata.TaskAttachmentPoint.NEW_PROCESS
+      !SessionsManager.isSessionAlive(session) -> ProfilerTaskMetadataProto.ProfilerTaskMetadata.TaskAttachmentPoint.ATTACHMENT_UNSPECIFIED
+      metadata.isStartupTask -> ProfilerTaskMetadataProto.ProfilerTaskMetadata.TaskAttachmentPoint.NEW_PROCESS
       else -> ProfilerTaskMetadataProto.ProfilerTaskMetadata.TaskAttachmentPoint.EXISTING_PROCESS
     }
   }

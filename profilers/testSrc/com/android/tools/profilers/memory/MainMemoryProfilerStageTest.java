@@ -43,6 +43,7 @@ import com.android.tools.profiler.proto.Memory;
 import com.android.tools.profiler.proto.Memory.AllocationsInfo;
 import com.android.tools.profiler.proto.Memory.HeapDumpInfo;
 import com.android.tools.profiler.proto.Memory.TrackStatus.Status;
+import com.android.tools.profiler.proto.ProfilerTaskMetadataProto.ProfilerTaskMetadata;
 import com.android.tools.profiler.proto.Trace;
 import com.android.tools.profilers.FakeFeatureTracker;
 import com.android.tools.profilers.ProfilerCaptureFileUtils;
@@ -954,6 +955,34 @@ public final class MainMemoryProfilerStageTest extends MemoryProfilerTestBase {
     assertThat(myIdeProfilerServices.getClosedTaskTab()).isEqualTo(ProfilerTaskType.HEAP_DUMP);
     assertThat(myIdeProfilerServices.isTraceSymbolizedAndDeobfuscated()).isFalse();
     assertThat(myIdeProfilerServices.getLastRequestedProguardMappingDeviceSerial()).isNull();
+  }
+
+  @Test
+  public void heapDumpOpenedInEditorIsDescribedAsNewAfterItsSessionEnds() throws Exception {
+    myIdeProfilerServices.setHeapDumpTraceInEditorEnabled(true);
+    HeapDumpInfo info = HeapDumpInfo.newBuilder().build();
+    myTransportService.addEventToStream(ProfilersTestData.SESSION_DATA.getStreamId(),
+                                        ProfilersTestData.generateMemoryHeapDumpData(info.getStartTime(), info.getStartTime(), info)
+                                          .setPid(ProfilersTestData.SESSION_DATA.getPid())
+                                          .build());
+    DataSeries<CaptureDurationData<? extends CaptureObject>> series =
+      CaptureDataSeries.ofHeapDumpSamples(new ProfilerClient(myGrpcChannel.getChannel()), ProfilersTestData.SESSION_DATA,
+                                          myIdeProfilerServices.getFeatureTracker(), myStage);
+    List<SeriesData<CaptureDurationData<? extends CaptureObject>>> dataList = series.getDataForRange(new Range(0, Double.MAX_VALUE));
+    File rawFile = TransportServiceUtils.createTempFile("dummy", "trace", ByteString.copyFromUtf8("dummy heap dump content"));
+    myFilesToCleanUp.add(rawFile);
+    myTransportService.addFile(Long.toString(info.getStartTime()), rawFile.getAbsolutePath());
+    myFilesToCleanUp.add(getRecordingFile(myProfilers, ProfilerTaskType.HEAP_DUMP, info.getStartTime(), "hprof").getParentFile());
+
+    // Taking a heap dump ends its session, which the selected session can show before the heap dump is saved.
+    myProfilers.getSessionsManager().endCurrentSession();
+    myTimer.tick(FakeTimer.ONE_SECOND_IN_NS);
+    assertThat(SessionsManager.isSessionAlive(myProfilers.getSession())).isFalse();
+    myStage.selectCaptureDuration(dataList.getFirst().value, null);
+
+    ProfilerTaskMetadata metadata = Utils.readRecordingMetadata(myIdeProfilerServices.getOpenedFile());
+    assertThat(metadata.getTaskDataOrigin()).isEqualTo(ProfilerTaskMetadata.TaskDataOrigin.NEW);
+    assertThat(metadata.getTaskAttachmentPoint()).isEqualTo(ProfilerTaskMetadata.TaskAttachmentPoint.EXISTING_PROCESS);
   }
 
   @Test
