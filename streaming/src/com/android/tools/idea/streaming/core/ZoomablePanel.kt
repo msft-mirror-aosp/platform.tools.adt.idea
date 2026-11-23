@@ -15,20 +15,33 @@
  */
 package com.android.tools.idea.streaming.core
 
+import com.android.tools.adtui.common.AdtUiCursorType
+import com.android.tools.adtui.common.AdtUiCursorsProvider
 import com.android.tools.adtui.util.scaled
 import com.intellij.ide.ActivityTracker
 import com.intellij.ui.JreHiDpiUtil
 import com.intellij.ui.scale.JBUIScale
+import com.intellij.util.ui.MouseEventAdapter
 import com.intellij.util.ui.components.BorderLayoutPanel
+import java.awt.Cursor
 import java.awt.Dimension
 import java.awt.Point
+import java.awt.event.InputEvent.BUTTON1_DOWN_MASK
+import java.awt.event.InputEvent.BUTTON2_DOWN_MASK
+import java.awt.event.MouseAdapter
+import java.awt.event.MouseEvent
+import java.awt.event.MouseWheelEvent
+import javax.swing.JComponent
+import javax.swing.JScrollPane
+import javax.swing.JViewport
+import javax.swing.SwingUtilities
 import kotlin.math.floor
 import kotlin.math.min
 import kotlin.math.roundToInt
 
 private val ZOOM_LEVELS = doubleArrayOf(0.0625, 0.125, 0.25, 0.5, 1.0, 2.0, 4.0)
 
-/** A [BorderLayoutPanel] with zoom support. */
+/** A [BorderLayoutPanel] with zoom and pan support. */
 internal abstract class ZoomablePanel : BorderLayoutPanel(), Zoomable {
 
   override val screenScalingFactor: Double
@@ -73,6 +86,84 @@ internal abstract class ZoomablePanel : BorderLayoutPanel(), Zoomable {
         findAncestor<CenterAnchoredViewport>()?.viewCenterOffset = value.viewCenterOffset
       }
     }
+
+  override var isPanning: Boolean = false
+    set(value) {
+      val newValue = value && isPannable
+      if (field != newValue) {
+        field = newValue
+        panOverlay?.isVisible = newValue
+        if (newValue) {
+          addMouseWheelListener(panMouseListener)
+        } else {
+          removeMouseWheelListener(panMouseListener)
+          panDragState = null
+        }
+        if (!isDisposed) {
+          panningStateChanged(newValue)
+          updateCursor()
+          ActivityTracker.getInstance().inc()
+        }
+      }
+    }
+
+  override val isPannable: Boolean
+    get() {
+      if (isDisposed || !canZoom()) {
+        return false
+      }
+      val scrollPane = scrollPane ?: return false
+      return scrollPane.width > 0 &&
+        scrollPane.height > 0 &&
+        (scrollPane.verticalScrollBar.isVisible || scrollPane.horizontalScrollBar.isVisible)
+    }
+
+  private val viewport: JViewport?
+    get() = parent as? JViewport
+
+  private val scrollPane: JScrollPane?
+    get() = viewport?.parent as? JScrollPane
+
+  /** Returns true if the panel has been disposed and should ignore pan, cursor, and overlay updates. */
+  protected open val isDisposed: Boolean
+    get() = false
+
+  private val panMouseListener = PanMouseListener()
+  internal var panOverlay: JComponent? = null
+    set(value) {
+      val newValue = if (isDisposed) null else value
+      if (field === newValue) {
+        return
+      }
+      field?.let { overlay ->
+        overlay.removeMouseListener(panMouseListener)
+        overlay.removeMouseMotionListener(panMouseListener)
+        overlay.removeMouseWheelListener(panMouseListener)
+        overlay.isVisible = false
+        overlay.cursor = null
+      }
+      panDragState = null
+      field = newValue
+      if (newValue != null) {
+        newValue.addMouseListener(panMouseListener)
+        newValue.addMouseMotionListener(panMouseListener)
+        newValue.addMouseWheelListener(panMouseListener)
+        newValue.isVisible = isPanning
+      }
+      if (!isDisposed) {
+        updateCursor()
+      }
+    }
+
+  private var panDragState: PanDragState? = null
+
+  private val isGrabbing: Boolean
+    get() = panDragState != null
+
+  init {
+    addMouseListener(panMouseListener)
+    addMouseMotionListener(panMouseListener)
+  }
 
   /** Returns the size of the content at 100% zoom. */
   internal abstract fun computeActualSize(framing: Framing): Dimension
@@ -137,6 +228,48 @@ internal abstract class ZoomablePanel : BorderLayoutPanel(), Zoomable {
     preferredSize = null
     fractionalScaleRange = 0.0
     revalidate()
+  }
+
+  /** Called when [isPanning] changes. */
+  protected open fun panningStateChanged(panning: Boolean) {}
+
+  /** May be overridden to show a context menu if [event] is a popup trigger. Returns true if a popup was shown. */
+  protected open fun handlePanPopup(event: MouseEvent): Boolean = false
+
+  /** Returns a custom cursor for the panel, or null to use the default cursor. */
+  protected open fun computeCustomCursor(): Cursor? {
+    if (isPanning) {
+      val cursorType = if (isGrabbing) AdtUiCursorType.GRABBING else AdtUiCursorType.GRAB
+      return AdtUiCursorsProvider.getInstance().getCursor(cursorType)
+    }
+    return null
+  }
+
+  /** Updates the cursor of the panel and [panOverlay] according to [computeCustomCursor]. */
+  protected fun updateCursor() {
+    val newCursor = computeCustomCursor()
+    val currentCursor = if (isCursorSet) cursor else null
+    if (currentCursor != newCursor) {
+      cursor = newCursor
+    }
+    panOverlay?.cursor = if (isPanning) newCursor else null
+  }
+
+  /** Terminates an active pan drag gesture, if any, and refreshes the cursor. */
+  protected fun endPanning() {
+    if (panDragState != null) {
+      panDragState = null
+      if (!isDisposed) {
+        updateCursor()
+      }
+    }
+  }
+
+  /** Terminates an active pan drag gesture if neither pan mouse button is pressed in [modifiersEx]. */
+  protected fun endPanningIfButtonsReleased(modifiersEx: Int) {
+    if ((modifiersEx and PAN_BUTTON_MASK) == 0) {
+      endPanning()
+    }
   }
 
   override fun setBounds(x: Int, y: Int, width: Int, height: Int) {
@@ -248,4 +381,108 @@ internal abstract class ZoomablePanel : BorderLayoutPanel(), Zoomable {
 
   /** Zoom and scroll state of the panel. */
   class ZoomScrollState(val framing: Framing, val preferredViewSize: Dimension?, val viewCenterOffset: Point)
+
+  private inner class PanMouseListener : MouseAdapter() {
+
+    override fun mousePressed(event: MouseEvent) {
+      if (!isPanning) {
+        return
+      }
+      requestFocusInWindow()
+      if (handlePanPopup(event)) {
+        endPanning()
+        return
+      }
+      val viewport = viewport ?: return
+      if (event.button == MouseEvent.BUTTON1 || event.button == MouseEvent.BUTTON2) {
+        panDragState =
+          PanDragState(SwingUtilities.convertPoint(event.component, event.point, viewport), viewport.viewPosition, width, height)
+        updateCursor()
+      }
+    }
+
+    override fun mouseReleased(event: MouseEvent) {
+      if (!isPanning) {
+        return
+      }
+      if (handlePanPopup(event) || (event.modifiersEx and PAN_BUTTON_MASK) == 0) {
+        endPanning()
+      }
+    }
+
+    override fun mouseEntered(event: MouseEvent) {
+      if (!isPanning) {
+        return
+      }
+      if (isGrabbing && (event.modifiersEx and PAN_BUTTON_MASK) == 0) {
+        endPanning()
+      }
+      updateCursor()
+    }
+
+    override fun mouseMoved(event: MouseEvent) {
+      if (!isPanning) {
+        return
+      }
+      if (isGrabbing && (event.modifiersEx and PAN_BUTTON_MASK) == 0) {
+        endPanning()
+      }
+      updateCursor()
+    }
+
+    override fun mouseDragged(event: MouseEvent) {
+      if (!isPanning) {
+        return
+      }
+      val state = panDragState ?: return
+      val viewport = viewport ?: return
+      if ((event.modifiersEx and PAN_BUTTON_MASK) != 0) {
+        val viewportPoint = SwingUtilities.convertPoint(event.component, event.point, viewport)
+        val currentViewPosition = viewport.viewPosition
+        val sizeChanged = width != state.viewWidth || height != state.viewHeight
+        if (sizeChanged || currentViewPosition.x != state.lastViewPosition.x) {
+          state.startViewportPoint.x = state.lastViewportPoint.x
+          state.startViewPosition.x = currentViewPosition.x
+        }
+        if (sizeChanged || currentViewPosition.y != state.lastViewPosition.y) {
+          state.startViewportPoint.y = state.lastViewportPoint.y
+          state.startViewPosition.y = currentViewPosition.y
+        }
+        state.viewWidth = width
+        state.viewHeight = height
+        viewport.viewPosition =
+          Point(
+            (state.startViewPosition.x + state.startViewportPoint.x - viewportPoint.x).coerceIn(
+              0,
+              (width - viewport.width).coerceAtLeast(0),
+            ),
+            (state.startViewPosition.y + state.startViewportPoint.y - viewportPoint.y).coerceIn(
+              0,
+              (height - viewport.height).coerceAtLeast(0),
+            ),
+          )
+        state.lastViewportPoint = viewportPoint
+        state.lastViewPosition = viewport.viewPosition
+      } else {
+        endPanning()
+      }
+    }
+
+    override fun mouseWheelMoved(event: MouseWheelEvent) {
+      if (!isPanning) {
+        return
+      }
+      val scrollPane = scrollPane ?: return
+      MouseEventAdapter.redispatch(event, scrollPane)
+    }
+  }
+
+  private class PanDragState(viewportPoint: Point, viewPosition: Point, var viewWidth: Int, var viewHeight: Int) {
+    val startViewportPoint = Point(viewportPoint)
+    val startViewPosition = Point(viewPosition)
+    var lastViewportPoint: Point = viewportPoint
+    var lastViewPosition: Point = viewPosition
+  }
 }
+
+private const val PAN_BUTTON_MASK = BUTTON1_DOWN_MASK or BUTTON2_DOWN_MASK

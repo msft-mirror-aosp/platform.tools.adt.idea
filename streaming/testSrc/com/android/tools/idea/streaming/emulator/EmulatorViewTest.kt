@@ -1211,6 +1211,24 @@ class EmulatorViewTest {
     view.dispatchEvent(MouseEvent(view, MouseEvent.MOUSE_ENTERED, now, SHIFT_DOWN_MASK, viewPoint.x, viewPoint.y, 0, false))
     assertThat(shortDebugString(call.getNextRequest(1.seconds))).isEqualTo("mouse_event { x: 1109 y: 1989 }")
     fakeUi.keyboard.release(VK_SHIFT)
+
+    // Disposing the view while panning with Shift held must clear Pan mode without instantiating VirtualSceneCameraController.
+    view.zoom(ZoomType.ACTUAL)
+    fakeUi.layoutAndDispatchEvents()
+    getStreamScreenshotCallAndWaitForFrame()
+    view.isPanning = true
+    assertThat(view.isPanning).isTrue()
+    fakeUi.keyboard.setFocus(view)
+    fakeUi.keyboard.press(VK_SHIFT)
+    Disposer.dispose(view)
+    assertThat(view.isPannable).isFalse()
+    assertThat(view.isPanning).isFalse()
+    assertThat(view.isOperatingVirtualSceneCamera).isFalse()
+    view.isPanning = true
+    assertThat(view.isPanning).isFalse()
+    view.isPanning = false
+    assertThat(view.isOperatingVirtualSceneCamera).isFalse()
+    fakeUi.keyboard.release(VK_SHIFT)
   }
 
   @Test

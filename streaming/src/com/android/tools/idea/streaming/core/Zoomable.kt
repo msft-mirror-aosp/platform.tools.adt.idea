@@ -26,7 +26,7 @@ internal enum class ZoomType {
   ACTUAL,
 }
 
-/** Implemented by components supporting different presentation scales. */
+/** Implemented by components supporting zooming and panning. */
 internal interface Zoomable {
   /** The scaling level of the view. Size of the view pixel */
   val scale: Double
@@ -46,6 +46,15 @@ internal interface Zoomable {
 
   /** Checks if the given zoom operation is currently possible. */
   fun canZoom(zoomType: ZoomType): Boolean
+
+  /** Indicates whether the view is currently in Pan mode. */
+  var isPanning: Boolean
+    get() = false
+    set(_) {}
+
+  /** Indicates whether the view can currently be panned. */
+  val isPannable: Boolean
+    get() = false
 }
 
 @JvmField internal val ZOOMABLE_KEY = DataKey.create<Zoomable>(Zoomable::class.java.name)

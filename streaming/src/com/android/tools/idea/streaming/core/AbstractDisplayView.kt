@@ -17,8 +17,6 @@ package com.android.tools.idea.streaming.core
 
 import com.android.annotations.concurrency.UiThread
 import com.android.sdklib.deviceprovisioner.DeviceType
-import com.android.tools.adtui.common.AdtUiCursorType
-import com.android.tools.adtui.common.AdtUiCursorsProvider
 import com.android.tools.adtui.common.primaryPanelBackground
 import com.android.tools.adtui.ui.NotificationHolderPanel
 import com.android.tools.adtui.util.rotatedByQuadrants
@@ -28,7 +26,6 @@ import com.android.tools.idea.streaming.actions.HardwareInputStateStorage
 import com.android.tools.idea.streaming.actions.StreamingHardwareInputAction
 import com.android.tools.idea.streaming.xr.AbstractXrInputController
 import com.android.tools.idea.streaming.xr.TRANSLATION_STEP_SIZE
-import com.intellij.ide.ActivityTracker
 import com.intellij.ide.KeyboardAwareFocusOwner
 import com.intellij.openapi.actionSystem.ActionGroup
 import com.intellij.openapi.actionSystem.ActionManager
@@ -43,11 +40,9 @@ import com.intellij.ui.PopupHandler
 import com.intellij.ui.components.JBPanel
 import com.intellij.util.containers.ContainerUtil
 import com.intellij.util.ui.JBUI
-import com.intellij.util.ui.MouseEventAdapter
 import java.awt.AWTEvent
 import java.awt.Color
 import java.awt.Component
-import java.awt.Cursor
 import java.awt.Dimension
 import java.awt.Graphics
 import java.awt.Graphics2D
@@ -100,8 +95,6 @@ import java.text.CharacterIterator
 import javax.swing.AbstractAction
 import javax.swing.JButton
 import javax.swing.JComponent
-import javax.swing.JScrollPane
-import javax.swing.JViewport
 import javax.swing.KeyStroke
 import javax.swing.SwingUtilities
 import javax.swing.event.HyperlinkListener
@@ -165,43 +158,11 @@ internal abstract class AbstractDisplayView(
 
   protected val deviceInputListenerManager = project.service<DeviceInputListenerManager>()
 
-  var isPanning: Boolean = false
-    set(value) {
-      val newValue = value && isPannable
-      if (field != newValue) {
-        field = newValue
-        panOverlay?.isVisible = newValue
-        if (newValue) {
-          addMouseWheelListener(panMouseListener)
-        } else {
-          removeMouseWheelListener(panMouseListener)
-          panDragState = null
-        }
-        panningStateChanged(newValue)
-        updateCursor()
-        ActivityTracker.getInstance().inc()
-      }
-    }
-
-  val isPannable: Boolean
-    get() {
-      if (!canZoom() || deviceType == DeviceType.XR_HEADSET) {
-        return false
-      }
-      val scrollPane = scrollPane ?: return false
-      return scrollPane.width > 0 &&
-        scrollPane.height > 0 &&
-        (scrollPane.verticalScrollBar.isVisible || scrollPane.horizontalScrollBar.isVisible)
-    }
-
-  private val viewport: JViewport?
-    get() = parent as? JViewport
-
-  private val scrollPane: JScrollPane?
-    get() = viewport?.parent as? JScrollPane
+  override val isPannable: Boolean
+    get() = deviceType != DeviceType.XR_HEADSET && super.isPannable
 
   @Volatile
-  var isDisposed: Boolean = false
+  public final override var isDisposed: Boolean = false
     private set
 
   /** Last observed modifier state. */
@@ -223,8 +184,8 @@ internal abstract class AbstractDisplayView(
           }
         val prevModifiers = lastModifiers
         lastModifiers = newModifiers
-        if (event is MouseEvent && event !is MouseWheelEvent && isGrabbing && (newModifiers and PAN_BUTTON_MASK) == 0) {
-          endPanning()
+        if (event is MouseEvent && event !is MouseWheelEvent) {
+          endPanningIfButtonsReleased(newModifiers)
         }
         if (event.source !== this && ((prevModifiers xor newModifiers) and KEY_MODIFIERS_MASK) != 0) {
           onExternalModifiersChanged()
@@ -240,38 +201,6 @@ internal abstract class AbstractDisplayView(
     }
   }
 
-  private val panMouseListener = PanMouseListener()
-  internal var panOverlay: JComponent? = null
-    set(value) {
-      val newValue = if (isDisposed) null else value
-      if (field === newValue) {
-        return
-      }
-      field?.let { overlay ->
-        overlay.removeMouseListener(panMouseListener)
-        overlay.removeMouseMotionListener(panMouseListener)
-        overlay.removeMouseWheelListener(panMouseListener)
-        overlay.isVisible = false
-        overlay.cursor = null
-      }
-      panDragState = null
-      field = newValue
-      if (newValue != null) {
-        newValue.addMouseListener(panMouseListener)
-        newValue.addMouseMotionListener(panMouseListener)
-        newValue.addMouseWheelListener(panMouseListener)
-        newValue.isVisible = isPanning
-      }
-      if (!isDisposed) {
-        updateCursor()
-      }
-    }
-
-  private var panDragState: PanDragState? = null
-
-  private val isGrabbing: Boolean
-    get() = panDragState != null
-
   init {
     background = primaryPanelBackground
     addToCenter(disconnectedStatePanel)
@@ -286,8 +215,6 @@ internal abstract class AbstractDisplayView(
           AWTEvent.WINDOW_EVENT_MASK,
       )
     addInputMethodListener(MyInputMethodListener())
-    addMouseListener(panMouseListener)
-    addMouseMotionListener(panMouseListener)
     addMouseListener(
       object : MouseAdapter() {
         override fun mouseClicked(event: MouseEvent) {
@@ -308,6 +235,7 @@ internal abstract class AbstractDisplayView(
   @MustBeInvokedByOverriders
   override fun dispose() {
     isDisposed = true
+    isPanning = false
     panOverlay = null
     Toolkit.getDefaultToolkit().removeAWTEventListener(awtEventListener)
   }
@@ -514,33 +442,7 @@ internal abstract class AbstractDisplayView(
     }
   }
 
-  protected open fun panningStateChanged(panning: Boolean) {}
-
-  protected open fun computeCustomCursor(): Cursor? {
-    if (isPanning) {
-      val cursorType = if (isGrabbing) AdtUiCursorType.GRABBING else AdtUiCursorType.GRAB
-      return AdtUiCursorsProvider.getInstance().getCursor(cursorType)
-    }
-    return null
-  }
-
-  protected fun updateCursor() {
-    val newCursor = computeCustomCursor()
-    val currentCursor = if (isCursorSet) cursor else null
-    if (currentCursor != newCursor) {
-      cursor = newCursor
-    }
-    panOverlay?.cursor = if (isPanning) newCursor else null
-  }
-
-  private fun endPanning() {
-    if (panDragState != null) {
-      panDragState = null
-      if (!isDisposed) {
-        updateCursor()
-      }
-    }
-  }
+  override fun handlePanPopup(event: MouseEvent): Boolean = handlePopup(event, insideDisplay = false)
 
   protected fun handlePopup(event: MouseEvent, insideDisplay: Boolean): Boolean {
     if (!event.isPopupTrigger || insideDisplay && !isPanning && (isHardwareInputEnabled() || rightClicksAreSentToDevice)) {
@@ -799,114 +701,6 @@ internal abstract class AbstractDisplayView(
       event.consume()
     }
   }
-
-  private inner class PanMouseListener : MouseAdapter() {
-
-    override fun mousePressed(event: MouseEvent) {
-      lastModifiers = event.modifiersEx
-      if (!isPanning) {
-        return
-      }
-      requestFocusInWindow()
-      if (handlePopup(event, insideDisplay = false)) {
-        endPanning()
-        return
-      }
-      val viewport = viewport ?: return
-      if (event.button == MouseEvent.BUTTON1 || event.button == MouseEvent.BUTTON2) {
-        panDragState =
-          PanDragState(SwingUtilities.convertPoint(event.component, event.point, viewport), viewport.viewPosition, width, height)
-        updateCursor()
-      }
-    }
-
-    override fun mouseReleased(event: MouseEvent) {
-      lastModifiers = event.modifiersEx
-      if (!isPanning) {
-        return
-      }
-      if (handlePopup(event, insideDisplay = false) || (event.modifiersEx and PAN_BUTTON_MASK) == 0) {
-        endPanning()
-      }
-    }
-
-    override fun mouseEntered(event: MouseEvent) {
-      lastModifiers = event.modifiersEx
-      if (!isPanning) {
-        return
-      }
-      if (isGrabbing && (event.modifiersEx and PAN_BUTTON_MASK) == 0) {
-        endPanning()
-      }
-      updateCursor()
-    }
-
-    override fun mouseMoved(event: MouseEvent) {
-      lastModifiers = event.modifiersEx
-      if (!isPanning) {
-        return
-      }
-      if (isGrabbing && (event.modifiersEx and PAN_BUTTON_MASK) == 0) {
-        endPanning()
-      }
-      updateCursor()
-    }
-
-    override fun mouseDragged(event: MouseEvent) {
-      lastModifiers = event.modifiersEx
-      if (!isPanning) {
-        return
-      }
-      val state = panDragState ?: return
-      val viewport = viewport ?: return
-      if ((event.modifiersEx and PAN_BUTTON_MASK) != 0) {
-        val viewportPoint = SwingUtilities.convertPoint(event.component, event.point, viewport)
-        val currentViewPosition = viewport.viewPosition
-        val sizeChanged = width != state.viewWidth || height != state.viewHeight
-        if (sizeChanged || currentViewPosition.x != state.lastViewPosition.x) {
-          state.startViewportPoint.x = state.lastViewportPoint.x
-          state.startViewPosition.x = currentViewPosition.x
-        }
-        if (sizeChanged || currentViewPosition.y != state.lastViewPosition.y) {
-          state.startViewportPoint.y = state.lastViewportPoint.y
-          state.startViewPosition.y = currentViewPosition.y
-        }
-        state.viewWidth = width
-        state.viewHeight = height
-        viewport.viewPosition =
-          Point(
-            (state.startViewPosition.x + state.startViewportPoint.x - viewportPoint.x).coerceIn(
-              0,
-              (width - viewport.width).coerceAtLeast(0),
-            ),
-            (state.startViewPosition.y + state.startViewportPoint.y - viewportPoint.y).coerceIn(
-              0,
-              (height - viewport.height).coerceAtLeast(0),
-            ),
-          )
-        state.lastViewportPoint = viewportPoint
-        state.lastViewPosition = viewport.viewPosition
-      } else {
-        endPanning()
-      }
-    }
-
-    override fun mouseWheelMoved(event: MouseWheelEvent) {
-      lastModifiers = event.modifiersEx
-      if (!isPanning) {
-        return
-      }
-      val scrollPane = scrollPane ?: return
-      MouseEventAdapter.redispatch(event, scrollPane)
-    }
-  }
-
-  private class PanDragState(viewportPoint: Point, viewPosition: Point, var viewWidth: Int, var viewHeight: Int) {
-    val startViewportPoint = Point(viewportPoint)
-    val startViewPosition = Point(viewPosition)
-    var lastViewportPoint: Point = viewportPoint
-    var lastViewPosition: Point = viewPosition
-  }
 }
 
 internal class ContextMenuHandler(private val component: JComponent, private val groupId: String, private val place: String) :
@@ -933,5 +727,4 @@ internal fun buttonToMask(button: Int): Int {
 internal const val BUTTON_MASK = BUTTON1_DOWN_MASK or BUTTON2_DOWN_MASK or BUTTON3_DOWN_MASK
 internal const val PROJECTION_RECTANGLE_PROPERTY = "projectionRectangle"
 
-private const val PAN_BUTTON_MASK = BUTTON1_DOWN_MASK or BUTTON2_DOWN_MASK
 private const val KEY_MODIFIERS_MASK = SHIFT_DOWN_MASK or CTRL_DOWN_MASK or META_DOWN_MASK or ALT_DOWN_MASK or ALT_GRAPH_DOWN_MASK

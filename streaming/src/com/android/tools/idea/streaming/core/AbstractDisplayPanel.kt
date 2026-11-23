@@ -340,7 +340,7 @@ internal abstract class AbstractDisplayPanel<T : AbstractDisplayView>(disposable
   }
 
   /**
-   * Transparent overlay placed above [scrollPane] while [AbstractDisplayView.isPanning] is active so that child overlays added inside
+   * Transparent overlay placed above [scrollPane] while [ZoomablePanel.isPanning] is active so that child overlays added inside
    * [displayView] (such as Embedded Layout Inspector) cannot intercept pan events or override the pan cursor. Passes through hits over
    * visible scrollbars so they remain interactive.
    */

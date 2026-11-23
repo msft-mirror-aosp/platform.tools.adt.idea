@@ -908,7 +908,9 @@ internal class DeviceViewTest {
     val grabbingCursor = AdtUiCursorsProvider.getInstance().getCursor(AdtUiCursorType.GRABBING)
     val overlay1 = JPanel().apply { isVisible = false }
     val overlay2 = JPanel().apply { isVisible = false }
+    val wheelListenerCountBeforePanning = view.mouseWheelListeners.size
     view.isPanning = true
+    assertThat(view.mouseWheelListeners).hasLength(wheelListenerCountBeforePanning + 1)
     view.panOverlay = overlay1
     val listenerCount = overlay1.mouseListeners.size
     assertThat(listenerCount).isGreaterThan(0)
@@ -955,12 +957,18 @@ internal class DeviceViewTest {
     assertThat(overlay2.cursor).isEqualTo(grabCursor)
 
     Disposer.dispose(view)
+    assertThat(view.isPannable).isFalse()
+    assertThat(view.isPanning).isFalse()
+    assertThat(view.mouseWheelListeners).hasLength(wheelListenerCountBeforePanning)
     assertThat(view.panOverlay).isNull()
     assertThat(overlay2.mouseListeners).isEmpty()
     assertThat(overlay2.mouseMotionListeners).isEmpty()
     assertThat(overlay2.mouseWheelListeners).isEmpty()
     assertThat(overlay2.isVisible).isFalse()
     assertThat(overlay2.isCursorSet).isFalse()
+    view.isPanning = true
+    assertThat(view.isPanning).isFalse()
+    assertThat(view.mouseWheelListeners).hasLength(wheelListenerCountBeforePanning)
     view.panOverlay = overlay1
     assertThat(view.panOverlay).isNull()
     assertThat(overlay1.mouseListeners).isEmpty()

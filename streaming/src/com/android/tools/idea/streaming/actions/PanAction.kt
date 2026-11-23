@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.streaming.actions
 
+import com.android.tools.idea.streaming.core.ZOOMABLE_KEY
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.ToggleAction
@@ -27,15 +28,15 @@ internal class PanAction : ToggleAction(), DumbAware {
   override fun update(event: AnActionEvent) {
     super.update(event)
     val presentation = event.presentation
-    val displayView = getDisplayView(event)
-    presentation.isEnabledAndVisible = displayView?.isPannable == true
-    presentation.icon = if (isSelected(event)) PAN_TOOL_SELECTED else PAN_TOOL
+    val zoomable = event.getData(ZOOMABLE_KEY)
+    presentation.isEnabledAndVisible = zoomable?.isPannable == true
+    presentation.icon = if (zoomable?.isPanning == true) PAN_TOOL_SELECTED else PAN_TOOL
   }
 
-  override fun isSelected(event: AnActionEvent): Boolean = getDisplayView(event)?.isPanning == true
+  override fun isSelected(event: AnActionEvent): Boolean = event.getData(ZOOMABLE_KEY)?.isPanning == true
 
   override fun setSelected(event: AnActionEvent, state: Boolean) {
-    getDisplayView(event)?.isPanning = state
+    event.getData(ZOOMABLE_KEY)?.isPanning = state
   }
 
   override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.EDT
