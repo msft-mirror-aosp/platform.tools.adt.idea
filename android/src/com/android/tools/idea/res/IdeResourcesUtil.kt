@@ -157,6 +157,7 @@ import org.jetbrains.android.dom.resources.Resources
 import org.jetbrains.android.facet.AndroidFacet
 import org.jetbrains.android.facet.AndroidRootUtil
 import org.jetbrains.android.facet.ResourceFolderManager
+import org.jetbrains.android.facet.matchesAnyUrl
 import org.jetbrains.android.resourceManagers.ModuleResourceManagers
 import org.jetbrains.android.sdk.getInstance
 import org.jetbrains.android.util.AndroidBundle
@@ -1383,7 +1384,8 @@ private fun isLocalResourceDirectoryInAnyVariant(dir: PsiDirectory): Boolean {
 
   val sourceProviders = SourceProviders.getInstance(facet)
   val namedIdeaSourceProviders = sourceProviders.allVariantAllArtifactsSourceProviders
-  return namedIdeaSourceProviders.any { it.resDirectories.contains(vf) } || AndroidRootUtil.getResourceOverlayDirs(facet).contains(vf)
+  return vf.matchesAnyUrl(namedIdeaSourceProviders.asSequence().flatMap { it.resDirectoryUrls }) ||
+    AndroidRootUtil.getResourceOverlayDirs(facet).contains(vf)
 }
 
 fun isInResourceSubdirectoryInAnyVariant(file: PsiFile, resourceType: String? = null): Boolean {

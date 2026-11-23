@@ -20,9 +20,12 @@ import com.android.tools.idea.projectsystem.SourceProviderManager
 import com.android.tools.idea.res.AndroidProjectRootListener
 import com.android.tools.idea.util.androidFacet
 import com.intellij.openapi.module.Module
+import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.util.Key
 import com.intellij.openapi.util.ModificationTracker
+import com.intellij.openapi.vfs.VfsUtilCore
 import com.intellij.openapi.vfs.VirtualFile
+import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.util.messages.Topic
 
 /**
@@ -82,6 +85,27 @@ class ResourceFolderManager(val module: Module) : ModificationTracker {
     }
 
   /**
+   * Returns whether [dir] is one of the current resource directories for this module.
+   *
+   * When [folders] is already cached, checks the cached list directly; otherwise compares [dir]'s URL against the configured resource
+   * directory URLs without triggering VFS resolution (`findFileByUrl`) of unrelated resource directories.
+   */
+  fun isResourceFolder(dir: VirtualFile): Boolean {
+    if (!dir.isValid) return false
+    val facet = module.androidFacet ?: return false
+    facet.getUserData(FOLDERS_KEY)?.let {
+      return it.contains(dir)
+    }
+    val urls =
+      if (!AndroidModel.isRequired(facet)) {
+        SourceProviderManager.getInstance(facet).mainIdeaSourceProvider?.resDirectoryUrls?.asSequence() ?: emptySequence()
+      } else {
+        ResourceFolderManagerToken.computeFolderUrlsFromSourceProviders(SourceProviderManager.getInstance(facet), module)
+      }
+    return dir.matchesAnyUrl(urls)
+  }
+
+  /**
    * This returns the primary resource directory; the default location to place newly created resources etc.
    *
    * This method is marked deprecated since we should be gradually adding in UI to allow users to choose specific resource folders among the
@@ -120,5 +144,16 @@ class ResourceFolderManager(val module: Module) : ModificationTracker {
   private fun readFromFacetState(facet: AndroidFacet): List<VirtualFile> {
     val sourceProviderManager = SourceProviderManager.getInstance(facet)
     return ResourceFolderManagerToken.computeFoldersFromSourceProviders(sourceProviderManager, module)
+  }
+}
+
+internal fun VirtualFile.matchesAnyUrl(urls: Sequence<String>): Boolean {
+  if (!isValid) return false
+  val fileUrl = url
+  val protocol = fileSystem.protocol
+  return urls.any { candidateUrl ->
+    ProgressManager.checkCanceled()
+    candidateUrl == fileUrl ||
+      (VirtualFileManager.extractProtocol(candidateUrl) == protocol && VfsUtilCore.pathEqualsTo(this, VfsUtilCore.urlToPath(candidateUrl)))
   }
 }

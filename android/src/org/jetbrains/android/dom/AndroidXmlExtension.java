@@ -104,11 +104,11 @@ public class AndroidXmlExtension extends DefaultXmlExtension {
         @Override
         public Boolean compute() {
           if (AndroidFacet.getInstance(file) != null) {
-            if (IdeResourcesUtil.isInResourceSubdirectoryInAnyVariant(file, null)) {
+            if (file.getName().equals(FN_ANDROID_MANIFEST_XML) && ManifestDomFileDescription.isManifestFile((XmlFile)file)) {
               return true;
             }
 
-            if (file.getName().equals(FN_ANDROID_MANIFEST_XML) && ManifestDomFileDescription.isManifestFile((XmlFile)file)) {
+            if (IdeResourcesUtil.isInResourceSubdirectoryInAnyVariant(file, null)) {
               return true;
             }
           }

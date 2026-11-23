@@ -75,10 +75,8 @@ public class LocalResourceManager extends ResourceManager {
 
   @Override
   public boolean isResourceDir(@NotNull VirtualFile dir) {
-    for (VirtualFile resDir : ResourceFolderManager.getInstance(myFacet).getFolders()) {
-      if (dir.equals(resDir)) {
-        return true;
-      }
+    if (ResourceFolderManager.getInstance(myFacet).isResourceFolder(dir)) {
+      return true;
     }
     for (VirtualFile resDir : AndroidRootUtil.getResourceOverlayDirs(myFacet)) {
       if (dir.equals(resDir)) {

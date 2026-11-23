@@ -17,6 +17,7 @@ package org.jetbrains.android.facet
 
 import com.android.tools.idea.projectsystem.CommonTestType
 import com.android.tools.idea.projectsystem.GradleToken
+import com.android.tools.idea.projectsystem.IdeaSourceProvider
 import com.android.tools.idea.projectsystem.SourceProviders
 import com.android.tools.idea.projectsystem.gradle.GradleProjectSystem
 import com.android.tools.idea.projectsystem.gradle.isAndroidTestModule
@@ -25,24 +26,32 @@ import com.intellij.openapi.module.Module
 import com.intellij.openapi.vfs.VirtualFile
 
 class ResourceFolderManagerGradleToken : GradleToken, ResourceFolderManagerToken<GradleProjectSystem> {
+  private fun getSourceProviders(sourceProviders: SourceProviders, module: Module): List<IdeaSourceProvider>? =
+    when {
+      module.isAndroidTestModule() ->
+        sourceProviders.run {
+          val sources = currentDeviceTestSourceProviders[CommonTestType.ANDROID_TEST].orEmpty()
+          val generated = listOfNotNull(generatedDeviceTestSources[CommonTestType.ANDROID_TEST])
+          sources + generated
+        }
+      module.isScreenshotTestModule() ->
+        sourceProviders.run {
+          val sources = currentHostTestSourceProviders[CommonTestType.SCREENSHOT_TEST].orEmpty()
+          val generated = listOfNotNull(generatedHostTestSources[CommonTestType.SCREENSHOT_TEST])
+          sources + generated
+        }
+      else -> null
+    }
+
   override fun computeFoldersFromSourceProviders(
     projectSystem: GradleProjectSystem,
     sourceProviders: SourceProviders,
     module: Module,
-  ): List<VirtualFile>? =
-    when {
-      module.isAndroidTestModule() ->
-        sourceProviders.run {
-          val sources = currentDeviceTestSourceProviders[CommonTestType.ANDROID_TEST]?.flatMap { it.resDirectories } ?: listOf()
-          val generated = generatedDeviceTestSources[CommonTestType.ANDROID_TEST]?.resDirectories ?: listOf()
-          (sources + generated).toList()
-        }
-      module.isScreenshotTestModule() ->
-        sourceProviders.run {
-          val sources = currentHostTestSourceProviders[CommonTestType.SCREENSHOT_TEST]?.flatMap { it.resDirectories } ?: listOf()
-          val generated = generatedHostTestSources[CommonTestType.SCREENSHOT_TEST]?.resDirectories ?: listOf()
-          (sources + generated).toList()
-        }
-      else -> null
-    }
+  ): List<VirtualFile>? = getSourceProviders(sourceProviders, module)?.flatMap { it.resDirectories }
+
+  override fun computeFolderUrlsFromSourceProviders(
+    projectSystem: GradleProjectSystem,
+    sourceProviders: SourceProviders,
+    module: Module,
+  ): Iterable<String>? = getSourceProviders(sourceProviders, module)?.asSequence()?.flatMap { it.resDirectoryUrls }?.asIterable()
 }

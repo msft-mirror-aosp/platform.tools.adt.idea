@@ -31,6 +31,12 @@ interface ResourceFolderManagerToken<P : AndroidProjectSystem> : Token {
    */
   fun computeFoldersFromSourceProviders(projectSystem: P, sourceProviders: SourceProviders, module: Module): List<VirtualFile>?
 
+  /**
+   * Return the resource folder URLs for this [Module] and its associated [SourceProviders] given the specific [AndroidProjectSystem], or
+   * `null` if the default behavior in [defaultFolderUrlsFromSourceProviders] is correct for this situation.
+   */
+  fun computeFolderUrlsFromSourceProviders(projectSystem: P, sourceProviders: SourceProviders, module: Module): Iterable<String>?
+
   companion object {
     val EP_NAME =
       ExtensionPointName<ResourceFolderManagerToken<AndroidProjectSystem>>("org.jetbrains.android.facet.resourceFolderManagerToken")
@@ -39,10 +45,22 @@ interface ResourceFolderManagerToken<P : AndroidProjectSystem> : Token {
       (currentSourceProviders.flatMap { it.resDirectories } + generatedSources.resDirectories).toList()
     }
 
+    private fun defaultFolderUrlsFromSourceProviders(sourceProviders: SourceProviders): Sequence<String> = sourceProviders.run {
+      currentSourceProviders.asSequence().flatMap { it.resDirectoryUrls } + generatedSources.resDirectoryUrls
+    }
+
     fun computeFoldersFromSourceProviders(sourceProviders: SourceProviders, module: Module): List<VirtualFile> {
       val projectSystem = module.project.getProjectSystem()
       return projectSystem.getTokenOrNull(EP_NAME)?.computeFoldersFromSourceProviders(projectSystem, sourceProviders, module)
         ?: defaultFoldersFromSourceProviders(sourceProviders)
+    }
+
+    fun computeFolderUrlsFromSourceProviders(sourceProviders: SourceProviders, module: Module): Sequence<String> {
+      val projectSystem = module.project.getProjectSystem()
+      return projectSystem
+        .getTokenOrNull(EP_NAME)
+        ?.computeFolderUrlsFromSourceProviders(projectSystem, sourceProviders, module)
+        ?.asSequence() ?: defaultFolderUrlsFromSourceProviders(sourceProviders)
     }
   }
 }

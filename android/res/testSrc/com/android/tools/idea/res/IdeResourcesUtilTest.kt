@@ -28,6 +28,9 @@ import com.android.tools.adtui.imagediff.ImageDiffTestUtil
 import com.android.tools.configurations.Configuration
 import com.android.tools.idea.configurations.ConfigurationManager
 import com.android.tools.idea.model.MergedManifestModificationListener
+import com.android.tools.idea.projectsystem.NamedIdeaSourceProvider
+import com.android.tools.idea.projectsystem.NamedIdeaSourceProviderBuilder
+import com.android.tools.idea.projectsystem.SourceProviderManager
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.testing.onEdt
 import com.android.tools.idea.util.androidFacet
@@ -39,6 +42,7 @@ import com.intellij.openapi.application.WriteAction
 import com.intellij.openapi.command.CommandProcessor
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.util.text.StringUtil
+import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.psi.PsiDirectory
 import com.intellij.psi.PsiField
@@ -582,6 +586,29 @@ class IdeResourcesUtilTest {
   fun buildResourceNameFromStringValue_stringStartsAndEndsWithPunctuation() {
     assertThat(buildResourceNameFromStringValue("\"A quotation\"")).isEqualTo("a_quotation")
     assertThat(buildResourceNameFromStringValue("<tag>")).isEqualTo("tag")
+  }
+
+  @Test
+  fun isInResourceSubdirectoryInAnyVariantDoesNotResolveResDirectories() {
+    val variantFile = fixture.addFileToProject("variant_res/layout/my_layout.xml", "<LinearLayout/>")
+    val otherFile = fixture.addFileToProject("other_dir/layout/other.xml", "<LinearLayout/>")
+    val variantResDir = variantFile.virtualFile.parent.parent
+
+    val baseProvider =
+      NamedIdeaSourceProviderBuilder.create("variant", "AndroidManifest.xml")
+        .withResDirectoryUrls(listOf("${variantResDir.url}/", "file:///nonexistent/unrelated/res"))
+        .build()
+    val noVfsResolutionProvider =
+      object : NamedIdeaSourceProvider by baseProvider {
+        override val resDirectories: Iterable<VirtualFile>
+          get() = throw AssertionError("isLocalResourceDirectoryInAnyVariant should not resolve resDirectories")
+      }
+    SourceProviderManager.replaceForTest(facet, projectRule.testRootDisposable, noVfsResolutionProvider)
+
+    application.runReadAction {
+      assertThat(isInResourceSubdirectoryInAnyVariant(variantFile)).isTrue()
+      assertThat(isInResourceSubdirectoryInAnyVariant(otherFile)).isFalse()
+    }
   }
 
   private fun getResDirectory(dirName: String): PsiDirectory {
