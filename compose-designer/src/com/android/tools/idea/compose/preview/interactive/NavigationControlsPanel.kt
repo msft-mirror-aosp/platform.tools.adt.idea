@@ -26,16 +26,15 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableFloatStateOf
@@ -49,6 +48,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
@@ -80,6 +80,8 @@ import org.jetbrains.jewel.ui.component.OutlinedButton
 import org.jetbrains.jewel.ui.component.Slider
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.Tooltip
+import org.jetbrains.jewel.ui.component.VerticallyScrollableContainer
+import org.jetbrains.jewel.ui.component.scrollbarContentSafePadding
 import org.jetbrains.jewel.ui.focusOutline
 
 private val DEFAULT_SPACING = 8.dp
@@ -328,51 +330,74 @@ private fun BackStack(
         modifier = Modifier.padding(DEFAULT_SPACING),
       )
     } else {
-      Column(
+      // Wrap the stack items in a scrollable container so a scrollbar appears when entries overflow
+      // and the list expands with the available panel height.
+      val scrollState = rememberScrollState()
+      // ScrollState.maxValue starts at Int.MAX_VALUE before the first layout pass, so exclude
+      // Int.MAX_VALUE to avoid reserving scrollbar padding on frame 1 when all items fit.
+      val isScrollable by
+        remember(scrollState) {
+          derivedStateOf { scrollState.maxValue > 0 && scrollState.maxValue != Int.MAX_VALUE }
+        }
+      VerticallyScrollableContainer(
+        scrollState = scrollState,
         modifier =
-          Modifier.fillMaxWidth()
-            // Stacks up to 240.dp before we enable the scrollbar.
-            .heightIn(max = 240.dp)
-            .verticalScroll(rememberScrollState()),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+          Modifier.fillMaxWidth().layout { measurable, constraints ->
+            // Swing's Splitter.getPreferredSize() queries StudioComposePanel with an unbounded
+            // height; clamp maxHeight so VerticallyScrollableContainer reports a finite preferred
+            // height while still expanding freely during bounded panel layout.
+            val boundedMaxHeight =
+              if (constraints.hasBoundedHeight) {
+                constraints.maxHeight
+              } else {
+                240.dp.roundToPx().coerceAtLeast(constraints.minHeight)
+              }
+            val placeable = measurable.measure(constraints.copy(maxHeight = boundedMaxHeight))
+            layout(placeable.width, placeable.height) { placeable.placeRelative(0, 0) }
+          },
       ) {
-        // Display in reverse order so the newest/active item is on top of the stack.
-        navigationHistory.asReversed().forEachIndexed { index, navigationInfoItem ->
-          val isCurrentActiveNavigationItem = index == 0
-          // Key by the forward stack index and item so the parsed state producer and focus state
-          // stay bound to the specific entry across pushes and pops.
-          key(navigationHistory.lastIndex - index, navigationInfoItem) {
-            val navKeys by
-              produceState(
-                parsedNavigationItemsCache[navigationInfoItem] ?: emptyList(),
-                navigationInfoItem,
-                fpsUpdater,
-              ) {
-                fun requestParseIfNeeded() {
-                  val cachedKeys = parsedNavigationItemsCache[navigationInfoItem]
-                  if (cachedKeys != null) {
-                    value = cachedKeys
-                  } else {
-                    parseNavigationItem(navigationInfoItem) { parsedKeys ->
-                      if (parsedKeys.isNotEmpty()) {
-                        parsedNavigationItemsCache[navigationInfoItem] = parsedKeys
+        Column(
+          modifier = Modifier.fillMaxWidth().padding(end = if (isScrollable) scrollbarContentSafePadding() else 0.dp),
+          horizontalAlignment = Alignment.CenterHorizontally,
+          verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+          // Display in reverse order so the newest/active item is on top of the stack.
+          navigationHistory.asReversed().forEachIndexed { index, navigationInfoItem ->
+            val isCurrentActiveNavigationItem = index == 0
+            // Key by the forward stack index and item so the parsed state producer and focus state
+            // stay bound to the specific entry across pushes and pops.
+            key(navigationHistory.lastIndex - index, navigationInfoItem) {
+              val navKeys by
+                produceState(
+                  parsedNavigationItemsCache[navigationInfoItem] ?: emptyList(),
+                  navigationInfoItem,
+                  fpsUpdater,
+                ) {
+                  fun requestParseIfNeeded() {
+                    val cachedKeys = parsedNavigationItemsCache[navigationInfoItem]
+                    if (cachedKeys != null) {
+                      value = cachedKeys
+                    } else {
+                      parseNavigationItem(navigationInfoItem) { parsedKeys ->
+                        if (parsedKeys.isNotEmpty()) {
+                          parsedNavigationItemsCache[navigationInfoItem] = parsedKeys
+                        }
+                        value = parsedKeys
                       }
-                      value = parsedKeys
+                    }
+                  }
+                  requestParseIfNeeded()
+                  fpsUpdater.collect {
+                    if (value.isEmpty()) {
+                      requestParseIfNeeded()
                     }
                   }
                 }
-                requestParseIfNeeded()
-                fpsUpdater.collect {
-                  if (value.isEmpty()) {
-                    requestParseIfNeeded()
-                  }
-                }
-              }
-            BackStackItem(
-              navKeys = navKeys,
-              isCurrentActiveNavigationItem = isCurrentActiveNavigationItem,
-            )
+              BackStackItem(
+                navKeys = navKeys,
+                isCurrentActiveNavigationItem = isCurrentActiveNavigationItem,
+              )
+            }
           }
         }
       }

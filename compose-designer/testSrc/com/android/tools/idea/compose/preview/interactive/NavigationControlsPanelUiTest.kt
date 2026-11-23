@@ -15,19 +15,24 @@
  */
 package com.android.tools.idea.compose.preview.interactive
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.LocalSaveableStateRegistry
 import androidx.compose.runtime.saveable.SaveableStateRegistry
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toAwtImage
+import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.assertHasNoClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsNotDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -35,10 +40,13 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performMouseInput
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeRight
 import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.dp
 import com.android.tools.adtui.compose.utils.StudioComposeTestRule
 import com.android.tools.idea.compose.preview.BackNavigationEdge
 import com.android.tools.idea.compose.preview.InteractivePreviewNavigationController
@@ -54,6 +62,8 @@ import kotlin.math.min
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import org.jetbrains.jewel.foundation.theme.JewelTheme
+import org.jetbrains.jewel.ui.component.styling.ScrollbarVisibility
+import org.jetbrains.jewel.ui.theme.scrollbarStyle
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
@@ -1070,6 +1080,139 @@ class NavigationControlsPanelUiTest {
     composeTestRule.waitForIdle()
     assertTrue(composeTestRule.onNodeWithText("Screen1").fetchSemanticsNode().config[SemanticsProperties.Focused])
     assertFalse(composeTestRule.onNodeWithText("Screen2").fetchSemanticsNode().config[SemanticsProperties.Focused])
+  }
+
+  @Test
+  fun testVisualStackShowsScrollbarAndExpandsWithPanelHeight() {
+    // Enable the visual back stack feature flag and start with two entries that fit on frame 1
+    StudioFlags.COMPOSE_INTERACTIVE_PREVIEW_PREDICTIVE_BACK_STACK_VISUAL.overrideForTest(
+      true,
+      projectRule.project,
+    )
+    val fpsUpdater =
+      MutableSharedFlow<Unit>(
+        extraBufferCapacity = 1,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST,
+      )
+    val panelHeightState = mutableStateOf(380.dp)
+    val fullHistory = listOf("Home", "Profile", "Catalog", "Details", "Cart", "Checkout")
+    val historyListState = mutableStateOf(listOf("Home", "Profile"))
+    var isAlwaysVisibleScrollbar = true
+
+    composeTestRule.mainClock.autoAdvance = false
+    composeTestRule.setContent {
+      isAlwaysVisibleScrollbar = JewelTheme.scrollbarStyle.scrollbarVisibility is ScrollbarVisibility.AlwaysVisible
+      Box(Modifier.size(width = 480.dp, height = panelHeightState.value)) {
+        NavigationControlsPanel(
+          isEdgeNavigationImplemented = { true },
+          getNavigationHistory = { historyListState.value },
+          canBackPress = { true },
+          onBackPress = {},
+          onBackPressStart = {},
+          onBackPressProgress = { _, _ -> },
+          onBackPressTrackProgress = {},
+          onEdgeDropdownPress = {},
+          fpsUpdater = fpsUpdater,
+        )
+      }
+    }
+
+    // Verify no scrollbar padding is reserved on frame 1 when entries already fit in the panel
+    composeTestRule.mainClock.advanceTimeByFrame()
+    val visualStackNode = composeTestRule.onNodeWithTag(NavigationControlsPanelTestTags.visualStack)
+    val firstFrameStackBounds = visualStackNode.fetchSemanticsNode().boundsInRoot
+    val firstFrameCardBounds = composeTestRule.onNodeWithText("Profile").fetchSemanticsNode().boundsInRoot
+    assertEquals(firstFrameStackBounds.right, firstFrameCardBounds.right, 1f)
+    composeTestRule.mainClock.autoAdvance = true
+    composeTestRule.waitForIdle()
+
+    // Grow the history to 6 overflowing entries at 380.dp and verify scrollbar space and scrolling
+    historyListState.value = fullHistory
+    fpsUpdater.tryEmit(Unit)
+    composeTestRule.waitForIdle()
+    val activeCardNode = composeTestRule.onNodeWithText("Checkout").assertIsDisplayed()
+    composeTestRule.onNodeWithText("Home").assertIsNotDisplayed()
+    if (isAlwaysVisibleScrollbar) {
+      val visualStackBoundsCompact = visualStackNode.fetchSemanticsNode().boundsInRoot
+      val activeCardBoundsCompact = activeCardNode.fetchSemanticsNode().boundsInRoot
+      val scrollbarStripWidthPx = (visualStackBoundsCompact.right - activeCardBoundsCompact.right).toInt()
+      assertTrue(
+        "Overflowing back stack should reserve space on the right for a visible scrollbar",
+        scrollbarStripWidthPx >= 4,
+      )
+    }
+    composeTestRule.onNodeWithText("Home").performScrollTo().assertIsDisplayed()
+    composeTestRule.waitForIdle()
+    composeTestRule.onNodeWithText("Checkout").assertIsNotDisplayed()
+
+    // Shrink from the overflowing 6-entry state at 380.dp to two fitting entries and verify no scrollbar space is reserved
+    historyListState.value = listOf("Home", "Profile")
+    fpsUpdater.tryEmit(Unit)
+    composeTestRule.waitForIdle()
+    val shortStackBounds = visualStackNode.fetchSemanticsNode().boundsInRoot
+    val shortActiveCardBounds = composeTestRule.onNodeWithText("Profile").fetchSemanticsNode().boundsInRoot
+    assertEquals(shortStackBounds.right, shortActiveCardBounds.right, 1f)
+
+    // Restore the overflowing 6-entry stack at 380.dp, then expand the panel height to 640.dp so all entries fit without scrolling
+    historyListState.value = fullHistory
+    fpsUpdater.tryEmit(Unit)
+    composeTestRule.waitForIdle()
+    panelHeightState.value = 640.dp
+    composeTestRule.waitForIdle()
+    val visualStackBoundsExpanded = visualStackNode.fetchSemanticsNode().boundsInRoot
+    val expandedHeightDp = with(composeTestRule.density) { visualStackBoundsExpanded.height.toDp() }
+    assertTrue(
+      "Expanded back stack height ($expandedHeightDp) should expand to fill available panel space",
+      expandedHeightDp > 300.dp,
+    )
+    for (entryName in fullHistory) {
+      composeTestRule.onNodeWithText(entryName).assertIsDisplayed()
+    }
+    val expandedActiveCardBounds = composeTestRule.onNodeWithText("Checkout").fetchSemanticsNode().boundsInRoot
+    assertEquals(visualStackBoundsExpanded.right, expandedActiveCardBounds.right, 1f)
+  }
+
+  @Test
+  fun testUnboundedPanelMeasurementDoesNotCrash() {
+    // Enable the visual back stack feature flag and measure with completely unbounded constraints
+    // to match Swing Splitter.getPreferredSize() querying StudioComposePanel.getPreferredSize()
+    StudioFlags.COMPOSE_INTERACTIVE_PREVIEW_PREDICTIVE_BACK_STACK_VISUAL.overrideForTest(
+      true,
+      projectRule.project,
+    )
+    val fpsUpdater =
+      MutableSharedFlow<Unit>(
+        extraBufferCapacity = 1,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST,
+      )
+    val historyList = listOf("Home", "Profile", "Catalog", "Details", "Cart", "Checkout")
+
+    composeTestRule.setContent {
+      Layout(
+        content = {
+          NavigationControlsPanel(
+            isEdgeNavigationImplemented = { true },
+            getNavigationHistory = { historyList },
+            canBackPress = { true },
+            onBackPress = {},
+            onBackPressStart = {},
+            onBackPressProgress = { _, _ -> },
+            onBackPressTrackProgress = {},
+            onEdgeDropdownPress = {},
+            fpsUpdater = fpsUpdater,
+          )
+        }
+      ) { measurables, _ ->
+        val placeable = measurables.single().measure(Constraints())
+        layout(placeable.width, placeable.height) { placeable.placeRelative(0, 0) }
+      }
+    }
+
+    // Verify the panel renders a finite preferred size without throwing IllegalStateException
+    composeTestRule.onNodeWithText("Checkout").assertIsDisplayed()
+    val panelBounds = composeTestRule.onNodeWithTag(NavigationControlsPanelTestTags.panel).fetchSemanticsNode().boundsInRoot
+    assertTrue(panelBounds.width > 0f)
+    assertTrue(panelBounds.height > 0f)
   }
 
   private fun areImagesIdentical(firstImage: BufferedImage, secondImage: BufferedImage): Boolean {
