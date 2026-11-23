@@ -23,3 +23,9 @@ bazel test //tools/adt/idea/preview-designer:intellij.android.preview-designer.t
 
 ## Related Documentation
 - [Preview Designer Architecture](docs/architecture.md)
+- [Shared UI Tools Review Invariants](../designer/AGENTS.md)
+
+## Code Review Invariants
+
+Read and enforce all mandatory UI Tools code review invariants (`U1`–`U5`) in
+[../designer/AGENTS.md](../designer/AGENTS.md).

@@ -34,3 +34,12 @@ bazel test //tools/adt/idea/compose-designer:intellij.android.compose-designer.t
 
 ## Related Documentation
 - [Compose Designer Architecture](docs/architecture.md)
+- [Shared UI Tools Review Invariants](../designer/AGENTS.md)
+
+## Code Review Invariants
+
+Read and enforce all mandatory UI Tools code review invariants (`U1`–`U5`) in
+[../designer/AGENTS.md](../designer/AGENTS.md), especially KMP/in-memory
+`@Preview` discovery and `LightVirtualFile` rules (`U3`), `ModuleClassLoader` /
+`Layoutlib Render Thread` isolation (`U1`), `RenderTask` / `RenderResult` /
+`Graphics2D` disposal (`U2`), and deterministic Compose tests without fragile runtime/editor mocks (`U5`).
