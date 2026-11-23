@@ -159,7 +159,6 @@ class AvdManagerConnectionTest {
         avdFolder.resolve("config.ini"),
         avdFolder.resolve("sdcard.img"),
         avdFolder.resolve("user-settings.ini"),
-        avdFolder.resolve("userdata.img"),
       )
   }
 
