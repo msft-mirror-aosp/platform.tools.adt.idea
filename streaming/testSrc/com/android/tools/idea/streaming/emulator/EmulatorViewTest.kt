@@ -1061,7 +1061,11 @@ class EmulatorViewTest {
     getStreamScreenshotCallAndWaitForFrame()
     val viewport = view.parent as JViewport
     val buttonViewPos = Point((view.width * 95) / 585, (view.height * 964) / 1161)
-    view.scrollPosition = Point((buttonViewPos.x - 30).coerceAtLeast(0), (buttonViewPos.y - 100).coerceAtLeast(0))
+    viewport.viewPosition =
+      Point(
+        (buttonViewPos.x - 30).coerceIn(0, (view.width - viewport.width).coerceAtLeast(0)),
+        (buttonViewPos.y - 100).coerceIn(0, (view.height - viewport.height).coerceAtLeast(0)),
+      )
     fakeUi.layoutAndDispatchEvents()
     val cleanPanRender = ImageUtils.scale(fakeUi.render(), 0.5)
 
@@ -1073,7 +1077,11 @@ class EmulatorViewTest {
     getStreamScreenshotCallAndWaitForFrame()
     view.zoom(ZoomType.IN)
     fakeUi.layoutAndDispatchEvents()
-    view.scrollPosition = Point((buttonViewPos.x - 30).coerceAtLeast(0), (buttonViewPos.y - 100).coerceAtLeast(0))
+    viewport.viewPosition =
+      Point(
+        (buttonViewPos.x - 30).coerceIn(0, (view.width - viewport.width).coerceAtLeast(0)),
+        (buttonViewPos.y - 100).coerceIn(0, (view.height - viewport.height).coerceAtLeast(0)),
+      )
     fakeUi.layoutAndDispatchEvents()
     val updatedButtonPanelPos = Point(buttonViewPos.x - viewport.viewPosition.x, buttonViewPos.y - viewport.viewPosition.y)
     pointerPos.location = updatedButtonPanelPos

@@ -17,7 +17,6 @@ package com.android.tools.idea.streaming.core
 
 import com.android.annotations.concurrency.UiThread
 import com.android.sdklib.deviceprovisioner.DeviceType
-import com.android.tools.adtui.Pannable
 import com.android.tools.adtui.common.AdtUiCursorType
 import com.android.tools.adtui.common.AdtUiCursorsProvider
 import com.android.tools.adtui.common.primaryPanelBackground
@@ -118,7 +117,7 @@ internal abstract class AbstractDisplayView(
   protected val project: Project,
   override val displayId: Int,
   contextMenuActionGroupId: String,
-) : ZoomablePanel(), DisplayView, Pannable, KeyboardAwareFocusOwner {
+) : ZoomablePanel(), DisplayView, KeyboardAwareFocusOwner {
 
   /** Serial number of the device shown in the view. */
   override val deviceSerialNumber: String
@@ -166,7 +165,7 @@ internal abstract class AbstractDisplayView(
 
   protected val deviceInputListenerManager = project.service<DeviceInputListenerManager>()
 
-  override var isPanning: Boolean = false
+  var isPanning: Boolean = false
     set(value) {
       val newValue = value && isPannable
       if (field != newValue) {
@@ -184,7 +183,7 @@ internal abstract class AbstractDisplayView(
       }
     }
 
-  override val isPannable: Boolean
+  val isPannable: Boolean
     get() {
       if (!canZoom() || deviceType == DeviceType.XR_HEADSET) {
         return false
@@ -193,18 +192,6 @@ internal abstract class AbstractDisplayView(
       return scrollPane.width > 0 &&
         scrollPane.height > 0 &&
         (scrollPane.verticalScrollBar.isVisible || scrollPane.horizontalScrollBar.isVisible)
-    }
-
-  override var scrollPosition: Point
-    get() = viewport?.viewPosition ?: Point()
-    set(value) {
-      viewport?.let { viewport ->
-        viewport.viewPosition =
-          Point(
-            value.x.coerceIn(0, (width - viewport.width).coerceAtLeast(0)),
-            value.y.coerceIn(0, (height - viewport.height).coerceAtLeast(0)),
-          )
-      }
     }
 
   private val viewport: JViewport?
@@ -827,7 +814,8 @@ internal abstract class AbstractDisplayView(
       }
       val viewport = viewport ?: return
       if (event.button == MouseEvent.BUTTON1 || event.button == MouseEvent.BUTTON2) {
-        panDragState = PanDragState(SwingUtilities.convertPoint(event.component, event.point, viewport), scrollPosition, width, height)
+        panDragState =
+          PanDragState(SwingUtilities.convertPoint(event.component, event.point, viewport), viewport.viewPosition, width, height)
         updateCursor()
       }
     }
@@ -873,25 +861,31 @@ internal abstract class AbstractDisplayView(
       val viewport = viewport ?: return
       if ((event.modifiersEx and PAN_BUTTON_MASK) != 0) {
         val viewportPoint = SwingUtilities.convertPoint(event.component, event.point, viewport)
-        val currentScrollPosition = scrollPosition
+        val currentViewPosition = viewport.viewPosition
         val sizeChanged = width != state.viewWidth || height != state.viewHeight
-        if (sizeChanged || currentScrollPosition.x != state.lastScrollPosition.x) {
+        if (sizeChanged || currentViewPosition.x != state.lastViewPosition.x) {
           state.startViewportPoint.x = state.lastViewportPoint.x
-          state.startScrollPosition.x = currentScrollPosition.x
+          state.startViewPosition.x = currentViewPosition.x
         }
-        if (sizeChanged || currentScrollPosition.y != state.lastScrollPosition.y) {
+        if (sizeChanged || currentViewPosition.y != state.lastViewPosition.y) {
           state.startViewportPoint.y = state.lastViewportPoint.y
-          state.startScrollPosition.y = currentScrollPosition.y
+          state.startViewPosition.y = currentViewPosition.y
         }
         state.viewWidth = width
         state.viewHeight = height
-        scrollPosition =
+        viewport.viewPosition =
           Point(
-            state.startScrollPosition.x + state.startViewportPoint.x - viewportPoint.x,
-            state.startScrollPosition.y + state.startViewportPoint.y - viewportPoint.y,
+            (state.startViewPosition.x + state.startViewportPoint.x - viewportPoint.x).coerceIn(
+              0,
+              (width - viewport.width).coerceAtLeast(0),
+            ),
+            (state.startViewPosition.y + state.startViewportPoint.y - viewportPoint.y).coerceIn(
+              0,
+              (height - viewport.height).coerceAtLeast(0),
+            ),
           )
         state.lastViewportPoint = viewportPoint
-        state.lastScrollPosition = scrollPosition
+        state.lastViewPosition = viewport.viewPosition
       } else {
         endPanning()
       }
@@ -907,11 +901,11 @@ internal abstract class AbstractDisplayView(
     }
   }
 
-  private class PanDragState(viewportPoint: Point, scrollPosition: Point, var viewWidth: Int, var viewHeight: Int) {
+  private class PanDragState(viewportPoint: Point, viewPosition: Point, var viewWidth: Int, var viewHeight: Int) {
     val startViewportPoint = Point(viewportPoint)
-    val startScrollPosition = Point(scrollPosition)
+    val startViewPosition = Point(viewPosition)
     var lastViewportPoint: Point = viewportPoint
-    var lastScrollPosition: Point = scrollPosition
+    var lastViewPosition: Point = viewPosition
   }
 }
 

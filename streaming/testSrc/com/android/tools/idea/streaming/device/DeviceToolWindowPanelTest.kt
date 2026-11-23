@@ -1057,7 +1057,7 @@ class DeviceToolWindowPanelTest {
     fakeUi.render()
 
     // Vertical wheel scrolling mid-drag preserves clamped horizontal overshoot.
-    deviceView.scrollPosition = Point(0, 50)
+    viewport.viewPosition = Point(0, 50)
     fakeUi.mouse.press(100, 180)
     fakeUi.mouse.dragTo(130, 180) // Overshoot past left edge by 30px (clamped to x = 0).
     assertThat(viewport.viewPosition.x).isEqualTo(0)

@@ -16,7 +16,6 @@
 package com.android.tools.idea.streaming.core
 
 import com.android.sdklib.deviceprovisioner.DeviceType
-import com.android.tools.adtui.PANNABLE_KEY
 import com.android.tools.adtui.common.primaryPanelBackground
 import com.android.tools.idea.streaming.actions.FloatingXrToolbarState
 import com.android.tools.idea.streaming.actions.PanAction
@@ -320,7 +319,6 @@ internal abstract class AbstractDisplayPanel<T : AbstractDisplayView>(disposable
     sink[DISPLAY_ID_KEY] = displayId
     sink[DISPLAY_VIEW_KEY] = displayView
     sink[ZOOMABLE_KEY] = displayView
-    sink[PANNABLE_KEY] = displayView
     (zoomToolbar ?: xrNavigationToolbar)?.let { floatingToolbar -> sink[FLOATING_TOOLBAR_KEY] = floatingToolbar }
   }
 

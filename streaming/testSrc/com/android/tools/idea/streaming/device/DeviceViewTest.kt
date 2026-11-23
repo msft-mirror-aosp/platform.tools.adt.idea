@@ -457,7 +457,8 @@ internal class DeviceViewTest {
     view.zoom(ZoomType.ACTUAL)
     fakeUi.layoutAndDispatchEvents()
     assertThat(getNextControlMessageAndWaitForFrame()).isEqualTo(SetMaxVideoResolutionMessage(0, Dimension(1080, 2340)))
-    view.scrollPosition = Point(50, 50)
+    val viewport = view.parent as JViewport
+    viewport.viewPosition = Point(50, 50)
     view.isPanning = true
     val grabCursor = AdtUiCursorsProvider.getInstance().getCursor(AdtUiCursorType.GRAB)
     val grabbingCursor = AdtUiCursorsProvider.getInstance().getCursor(AdtUiCursorType.GRABBING)
@@ -470,7 +471,7 @@ internal class DeviceViewTest {
       MouseEvent(view, MouseEvent.MOUSE_DRAGGED, now, CTRL_DOWN_MASK or BUTTON1_DOWN_MASK, 60, 40, 1, false, MouseEvent.NOBUTTON)
     )
     assertThat(view.cursor).isEqualTo(grabCursor)
-    assertThat(view.scrollPosition).isEqualTo(Point(50, 50))
+    assertThat(viewport.viewPosition).isEqualTo(Point(50, 50))
     view.dispatchEvent(MouseEvent(view, MouseEvent.MOUSE_RELEASED, now, CTRL_DOWN_MASK, 60, 40, 1, false, MouseEvent.BUTTON1))
 
     // Triggering a popup mid-drag ends the active pan gesture so subsequent drag events do not continue panning.
@@ -481,7 +482,7 @@ internal class DeviceViewTest {
     )
     assertThat(view.cursor).isEqualTo(grabCursor)
     view.dispatchEvent(MouseEvent(view, MouseEvent.MOUSE_DRAGGED, now, BUTTON1_DOWN_MASK, 60, 40, 1, false, MouseEvent.NOBUTTON))
-    assertThat(view.scrollPosition).isEqualTo(Point(50, 50))
+    assertThat(viewport.viewPosition).isEqualTo(Point(50, 50))
     view.dispatchEvent(MouseEvent(view, MouseEvent.MOUSE_RELEASED, now, 0, 60, 40, 1, false, MouseEvent.BUTTON1))
   }
 
@@ -1777,7 +1778,7 @@ internal class DeviceViewTest {
     fakeUi.layoutAndDispatchEvents()
     assertThat(view.isPannable).isTrue()
     val viewport = view.parent as JViewport
-    view.scrollPosition = Point(0, 0)
+    viewport.viewPosition = Point(0, 0)
     assertThat(viewport.viewPosition).isEqualTo(Point(0, 0))
     fakeUi.mouse.wheel(150, 200, 3)
     waitForCondition(1.seconds) { viewport.viewPosition.y > 0 }
