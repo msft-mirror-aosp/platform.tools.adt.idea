@@ -52,6 +52,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.android.tools.adtui.common.primaryContentBackground
 import com.android.tools.adtui.compose.StudioComposePanel
+import com.android.tools.idea.findings.model.AffectedScope
 import com.android.tools.idea.findings.model.AppFinding
 import com.android.tools.idea.findings.model.DeviceInfo
 import com.android.tools.idea.findings.model.FindingOccurrence
@@ -201,7 +202,7 @@ class FindingsDetailsPanel(
   }
 }
 
-/** Renders the finding-level summary (severity icon, title, description, and right-aligned "Ask AI" action). */
+/** Renders the finding-level summary (severity icon, title, affected scopes, description, and right-aligned "Ask AI" action). */
 @Composable
 private fun FindingSummarySection(
   finding: AppFinding,
@@ -230,6 +231,8 @@ private fun FindingSummarySection(
       )
     }
 
+    FindingAffectedScopesRow(affectedScopes = finding.affectedScopes)
+
     Row(
       modifier = Modifier.fillMaxWidth().testTag("finding_description_row"),
       verticalAlignment = Alignment.Top,
@@ -255,6 +258,41 @@ private fun FindingSummarySection(
       }
     }
   }
+}
+
+@Composable
+private fun FindingAffectedScopesRow(affectedScopes: List<AffectedScope>) {
+  val text = formatAffectedScopes(affectedScopes) ?: return
+
+  SelectionContainer {
+    Text(
+      text = text,
+      modifier = Modifier.fillMaxWidth().testTag("finding_affected_scopes"),
+    )
+  }
+}
+
+// TODO(b/517599039): Revisit this wording/formatting to group each release with its associated version code(s) once
+// InAppLocation.Release nests artifacts in the synced API proto.
+@VisibleForTesting
+internal fun formatAffectedScopes(affectedScopes: List<AffectedScope>): String? {
+  val releases =
+    affectedScopes.filterIsInstance<AffectedScope.Release>().map { it.releaseName.trim() }.filter { it.isNotEmpty() }.distinct()
+  val versionCodes =
+    affectedScopes.filterIsInstance<AffectedScope.Artifact>().map { it.versionCode.trim() }.filter { it.isNotEmpty() }.distinct()
+
+  return buildList {
+      if (releases.isNotEmpty()) {
+        val label = if (releases.size == 1) "Affected release" else "Affected releases"
+        add("$label: ${releases.joinToString(", ")}")
+      }
+      if (versionCodes.isNotEmpty()) {
+        val label = if (versionCodes.size == 1) "Affected version code" else "Affected version codes"
+        add("$label: ${versionCodes.joinToString(", ")}")
+      }
+    }
+    .takeIf { it.isNotEmpty() }
+    ?.joinToString(" • ")
 }
 
 /** Renders the occurrence selector, device/API metadata, and evidence sub-tabs (`Stack trace`, `Screenshots`) for [finding]. */

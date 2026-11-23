@@ -106,10 +106,47 @@ class FindingsDetailsPanelTest {
     composeTestRule.onNodeWithTag("finding_summary_section", useUnmergedTree = true).assertIsDisplayed()
     composeTestRule.onNodeWithTag("finding_occurrences_section", useUnmergedTree = true).assertDoesNotExist()
     composeTestRule.onNodeWithTag("finding_title", useUnmergedTree = true).assertTextEquals(sampleFinding.displayName)
+    composeTestRule.onNodeWithTag("finding_affected_scopes", useUnmergedTree = true).assertTextEquals("Affected version code: 101")
     composeTestRule.onNodeWithContentDescription(sampleFinding.severity.name, useUnmergedTree = true).assertIsDisplayed()
     composeTestRule.onNodeWithTag("ask_ai_button", useUnmergedTree = true).assertIsDisplayed()
     composeTestRule.onNodeWithText("Ask AI", useUnmergedTree = true).assertIsDisplayed()
     composeTestRule.onNodeWithTag("finding_description", useUnmergedTree = true).assertTextEquals(sampleFinding.description)
+  }
+
+  @Test
+  fun testFormatAffectedScopes() {
+    assertThat(formatAffectedScopes(emptyList())).isNull()
+    assertThat(formatAffectedScopes(listOf(AffectedScope.Release("   "), AffectedScope.Artifact("   ")))).isNull()
+    assertThat(formatAffectedScopes(listOf(AffectedScope.Release(" 1.0.0 ")))).isEqualTo("Affected release: 1.0.0")
+    assertThat(formatAffectedScopes(listOf(AffectedScope.Release("1.0.0"), AffectedScope.Release("1.1.0"))))
+      .isEqualTo("Affected releases: 1.0.0, 1.1.0")
+    assertThat(formatAffectedScopes(listOf(AffectedScope.Artifact(" 101 ")))).isEqualTo("Affected version code: 101")
+    assertThat(formatAffectedScopes(listOf(AffectedScope.Artifact("101"), AffectedScope.Artifact("102"), AffectedScope.Artifact("101"))))
+      .isEqualTo("Affected version codes: 101, 102")
+    assertThat(formatAffectedScopes(listOf(AffectedScope.Artifact("101"), AffectedScope.Release("1.2.0"), AffectedScope.Artifact("102"))))
+      .isEqualTo("Affected release: 1.2.0 • Affected version codes: 101, 102")
+  }
+
+  @Test
+  fun testAffectedScopes_hidesWhenEmptyAndDisplaysUnderTitle() {
+    val panel = FindingsDetailsPanel(parentDisposable = disposableRule.disposable, project = projectRule.project)
+    composeTestRule.setContent { Box(Modifier.size(600.dp, 250.dp)) { panel.FindingsDetailsContent() } }
+
+    panel.updateFinding(sampleFinding.copy(affectedScopes = emptyList()))
+    composeTestRule.waitForIdle()
+    composeTestRule.onNodeWithTag("finding_affected_scopes", useUnmergedTree = true).assertDoesNotExist()
+
+    panel.updateFinding(sampleFinding.copy(affectedScopes = listOf(AffectedScope.Release("1.2.0"), AffectedScope.Artifact("101"))))
+    composeTestRule.waitForIdle()
+    composeTestRule
+      .onNodeWithTag("finding_affected_scopes", useUnmergedTree = true)
+      .assertTextEquals("Affected release: 1.2.0 • Affected version code: 101")
+
+    val titleBounds = composeTestRule.onNodeWithTag("finding_title", useUnmergedTree = true).getUnclippedBoundsInRoot()
+    val scopesBounds = composeTestRule.onNodeWithTag("finding_affected_scopes", useUnmergedTree = true).getUnclippedBoundsInRoot()
+    val descriptionBounds = composeTestRule.onNodeWithTag("finding_description", useUnmergedTree = true).getUnclippedBoundsInRoot()
+    assertThat(scopesBounds.top).isAtLeast(titleBounds.bottom)
+    assertThat(descriptionBounds.top).isAtLeast(scopesBounds.bottom)
   }
 
   @Test
