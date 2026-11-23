@@ -9,25 +9,10 @@ _tests = [
     "K2IdeK2CodeBreakpointHighlightingTestGenerated.testAnonymousFun",  # b/575539285, b/578038532
     "K2IdeK2CodeBreakpointHighlightingTestGenerated.testDefaultLambdaParameter",  # b/578038532
     "K2IdeK2CodeBreakpointHighlightingTestGenerated.testMultiLineLambda",  # b/578123886
-    "K2IdeK2CodeContinuationStackTraceTestGenerated.testSuspendFun1",  # b/579461799
     "K2IdeK2CodeContinuationStackTraceTestGenerated.testSuspendFunStackTraceFolded",  # b/579461799
     "K2IdeK2CodeContinuationStackTraceTestGenerated.testSuspendFunStackTraceFoldedIDEA345945",  # b/579461799
     "K2IdeK2CodeContinuationStackTraceTestGenerated.testSuspendFunStackTraceHidden",  # b/579461799
     "K2IdeK2CodeContinuationStackTraceTestGenerated.testSuspendFunWithInner",  # b/579461799
-    "K2IdeK2CodeCoroutineAsyncStackTraceTestGenerated$Todo$Skipped_suspend_frame.testSuspendFramesBeforeLaunch",  # b/579461799
-    "K2IdeK2CodeCoroutineAsyncStackTraceTestGenerated$Uncategorized.testChannel",  # b/579461799
-    "K2IdeK2CodeCoroutineAsyncStackTraceTestGenerated$Uncategorized.testFramesAboveCoroutineOwner",  # b/579461799
-    "K2IdeK2CodeCoroutineAsyncStackTraceTestGenerated$Uncategorized.testNestedLaunches",  # b/579461799
-    "K2IdeK2CodeCoroutineAsyncStackTraceTestGenerated$Uncategorized.testNestedScopes1",  # b/579461799
-    "K2IdeK2CodeCoroutineAsyncStackTraceTestGenerated$Uncategorized.testNestedScopesWithSyncFrame",  # b/579461799
-    "K2IdeK2CodeCoroutineAsyncStackTraceTestGenerated$Uncategorized.testNestedWithContexts1",  # b/579461799
-    "K2IdeK2CodeCoroutineAsyncStackTraceTestGenerated$Uncategorized.testNestedWithContexts2",  # b/579461799
-    "K2IdeK2CodeCoroutineAsyncStackTraceTestGenerated$Uncategorized.testSuspendFramesBeforeWithContext",  # b/579461799
-    "K2IdeK2CodeCoroutineAsyncStackTraceTestGenerated$Uncategorized.testTwoWithContextBlocks",  # b/579461799
-    "K2IdeK2CodeCoroutineAsyncStackTraceTestGenerated$Uncategorized.testWithContextDispatched1",  # b/579461799
-    "K2IdeK2CodeCoroutineAsyncStackTraceTestGenerated$Uncategorized.testWithContextDispatched2",  # b/579461799
-    "K2IdeK2CodeCoroutineAsyncStackTraceTestGenerated$Uncategorized.testWithContextUndispatched1",  # b/579461799
-    "K2IdeK2CodeCoroutineAsyncStackTraceTestGenerated$Uncategorized.testWithTimeout",  # b/579461799
     "K2IdeK2CodeCoroutineDumpTestGenerated.testTwoDumps",  # b/579461799
     "K2IdeK2CodeKotlinEvaluateExpressionTestGenerated$MultipleBreakpoints$Uncategorized.testInlineStackTraceWithTryFinally",  # b/579461799 Android stack trace is actually the right one
     "K2IdeK2CodeKotlinEvaluateExpressionTestGenerated$SingleBreakpoint$Frame.testFrameObject",  # b/581450939, b/578038532
@@ -94,11 +79,6 @@ _tests = [
     "K2IdeK2CodeKotlinSteppingTestGenerated$StepOver$Uncategorized.testStepOverConstructorWithValueClassParam",  # b/495501447
     "K2IdeK2CodeKotlinSteppingTestGenerated$StepOver$Uncategorized.testStopInNamelessFunInInlineCall",
     "K2IdeK2CodeKotlinVariablePrintingTestGenerated.testOptimisedVariablesInSuspendContexts",
-    "K2IdeK2CodeKotlinVariablePrintingTestGenerated.testOptimisedVariablesInSuspendInline",
-    "K2IdeK2CodeKotlinVariablePrintingTestGenerated.testOptimisedVariablesWithLambdas",
-    "K2IdeK2CodeKotlinVariablePrintingTestGenerated.testOptimisedVariablesWithWhen",
-    "K2IdeK2CodeKotlinVariablePrintingTestGenerated.testScopeVariablesInInlineSuspendBlock",
-    "K2IdeK2CodeKotlinVariablePrintingTestGenerated.testSpilledCapturedVariables",
     "K2IdeK2CodeXCoroutinesStackTraceTestGenerated.testCoroutineSuspendFun",
     "K2IdeK2CodeXCoroutinesStackTraceTestGenerated.testCoroutineSuspendFun136",
     "K2IdeK2CodeXCoroutinesStackTraceTestGenerated.testSuspendMain",
@@ -115,17 +95,6 @@ TESTS_WITH_ORDER_RELATED_FAILURE = [include_k2(test) for test in _tests_with_ord
 
 _tests_with_errors = [
     "InlineScopesAndK2IdeK2CodeEvaluateExpressionTestGenerated$SingleBreakpoint$Frame.testEvaluatableGetters",
-    "K2FlowAsyncStackTraceTestGenerated.testSharedFlowComplex",
-    "K2FlowAsyncStackTraceTestGenerated.testSharedFlowDebounce",
-    "K2FlowAsyncStackTraceTestGenerated.testSharedFlowMerge",
-    "K2FlowAsyncStackTraceTestGenerated.testSharedFlowMultipleFlowsSameValues",
-    "K2FlowAsyncStackTraceTestGenerated.testSharedFlowNulls",
-    "K2FlowAsyncStackTraceTestGenerated.testSharedFlowSimple",
-    "K2FlowAsyncStackTraceTestGenerated.testStateFlowComplex",
-    "K2FlowAsyncStackTraceTestGenerated.testStateFlowMerge",
-    "K2FlowAsyncStackTraceTestGenerated.testStateFlowMultipleFlowsSameValues",
-    "K2FlowAsyncStackTraceTestGenerated.testStateFlowNulls",
-    "K2FlowAsyncStackTraceTestGenerated.testStateFlowSimple",
     "K2IdeK2CodeKotlinEvaluateExpressionTestGenerated$SingleBreakpoint$Frame.testEvaluatableGetters",
 ]
 TESTS_WITH_ERRORS = [include_k2(test) for test in _tests_with_errors]

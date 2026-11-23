@@ -1,3 +1,4 @@
+load("@rules_python//python:defs.bzl", "py_test")
 load(":art-k2-failing-tests.bzl", "ART_K2_FAILING", "TESTS_WITH_ERRORS", "TESTS_WITH_ORDER_RELATED_FAILURE")
 load(":ij-debugger-tests.bzl", "debugger_test", "include_k2")
 
@@ -180,4 +181,34 @@ test_suite(
         ":art",
         ":jvm",
     ],
+)
+
+_TEST_LIST_DEPS = [
+    "@tools_idea//plugins/kotlin/jvm-debugger/test/compose:compose_test_lib",
+    "@tools_idea//plugins/kotlin/jvm-debugger/test/k2:kotlin-jvm-debugger-test_test_lib",
+    "@tools_idea//plugins/kotlin/jvm-debugger/test/parcelize:parcelize_test_lib",
+    "@tools_idea//plugins/kotlin/jvm-debugger/test/performance:kotlin-jvm-debugger-performance-test_test_lib",
+]
+
+py_test(
+    name = "validate-test-lists",
+    size = "small",
+    srcs = ["validate_test_lists.py"],
+    data = glob([
+        "*-expected-results.txt",
+        "*-failing-tests.bzl",
+    ]) + [
+        "@bazel_tools//tools/jdk:current_java_runtime",
+    ] + _TEST_LIST_DEPS,
+    env = {
+        "JAVAP": "$(JAVABASE)/bin/javap",
+        "TEST_JARS": " ".join(["$(rootpaths %s)" % dep for dep in _TEST_LIST_DEPS]),
+    },
+    main = "validate_test_lists.py",
+    target_compatible_with = select({
+        "@platforms//os:windows": ["@platforms//:incompatible"],
+        "@platforms//os:macos": ["@platforms//:incompatible"],
+        "//conditions:default": [],
+    }),
+    toolchains = ["@bazel_tools//tools/jdk:current_java_runtime"],
 )
