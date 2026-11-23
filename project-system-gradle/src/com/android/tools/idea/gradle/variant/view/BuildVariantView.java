@@ -191,7 +191,12 @@ public class BuildVariantView {
   }
 
   private void projectImportStarted() {
-    getVariantsTable().setLoading();
+    ModalityUiUtil.invokeLaterIfNeeded(ModalityState.nonModal(), () -> {
+      myNotificationPanel.setVisible(false);
+      ((NotificationPanel)myNotificationPanel).myCurrentConflictIndex = -1;
+      myConflicts.clear();
+      getVariantsTable().setLoading();
+    });
   }
 
   private void projectImportFinished() {
@@ -291,31 +296,42 @@ public class BuildVariantView {
     }
 
     private int nextConflictModule(Function<Integer, Integer> getNextIndex) {
+      int rowCount = getVariantsTable().getRowCount();
+      if (rowCount == 0) {
+        return -1;
+      }
       int index = getNextIndex.apply(myCurrentConflictIndex);
-      for (int i = 0; i < getVariantsTable().getRowCount(); i++) {
+      for (int i = 0; i < rowCount; i++) {
         if (getVariantsTable().hasConflict(index)) {
           return index;
         }
         index = getNextIndex.apply(index);
       }
-      return myCurrentConflictIndex;
+      return -1;
     }
 
     private int findConflictModuleForward() {
-      return nextConflictModule(index -> (index + 1) % getVariantsTable().getRowCount());
+      return nextConflictModule(index -> {
+        int rowCount = getVariantsTable().getRowCount();
+        return index < 0 ? 0 : (index + 1) % rowCount;
+      });
     }
 
     private int findConflictModuleBackwards() {
-      return nextConflictModule(index -> index <= 0 ? getVariantsTable().getRowCount() - 1 : index - 1);
+      return nextConflictModule(index -> {
+        int rowCount = getVariantsTable().getRowCount();
+        return index <= 0 || index >= rowCount ? rowCount - 1 : index - 1;
+      });
     }
 
     private void navigateConflicts(boolean forward) {
-      int conflictCount = myConflicts.size();
-      if (conflictCount == 0) {
+      if (myConflicts.isEmpty() || getVariantsTable().getRowCount() == 0) {
         return;
       }
       myCurrentConflictIndex = forward ? findConflictModuleForward() : findConflictModuleBackwards();
-      selectModule(myCurrentConflictIndex);
+      if (myCurrentConflictIndex >= 0) {
+        selectModule(myCurrentConflictIndex);
+      }
     }
   }
 
