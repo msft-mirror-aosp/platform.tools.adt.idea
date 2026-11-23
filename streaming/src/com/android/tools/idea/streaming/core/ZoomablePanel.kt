@@ -142,9 +142,7 @@ internal abstract class ZoomablePanel : BorderLayoutPanel(), Zoomable {
   override fun setBounds(x: Int, y: Int, width: Int, height: Int) {
     val sizeChanged = width != this.width || height != this.height
     super.setBounds(x, y, width, height)
-    if (
-      fractionalScaleRange != 0.0 && fractionalScaleRange != roundDownIfGreaterThanOne(computeScaleToFit(framing, computeMaxImageSize()))
-    ) {
+    if (fractionalScaleRange != 0.0 && fractionalScaleRange != computeBaseScale()) {
       fractionalScaleRange = 0.0
     }
     if (sizeChanged) {
@@ -215,6 +213,12 @@ internal abstract class ZoomablePanel : BorderLayoutPanel(), Zoomable {
 
   /** Checks is the two given numbers would look the same when expressed as integer percentages. */
   private fun areSamePercentages(d1: Double, d2: Double) = (d1 * 100).roundToInt() == (d2 * 100).roundToInt()
+
+  /**
+   * Computes the scale factor that fits the content for the current [framing] into [computeMaxImageSize], with values above 1.0 rounded
+   * down to an integer (ignoring [fractionalScaleRange]).
+   */
+  private fun computeBaseScale(): Double = roundDownIfGreaterThanOne(computeScaleToFit(framing, computeMaxImageSize()))
 
   private fun computeScaleToFitInParent(framing: Framing) = computeScaleToFit(framing, computeAvailableSize())
 
