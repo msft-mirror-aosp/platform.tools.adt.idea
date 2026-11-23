@@ -41,9 +41,12 @@ import com.intellij.openapi.application.runWriteAction
 import com.intellij.openapi.application.runWriteActionAndWait
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.fileTypes.PlainTextFileType
+import com.intellij.openapi.module.Module
+import com.intellij.openapi.module.ModuleManager
 import com.intellij.openapi.module.ModuleType
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.progress.EmptyProgressIndicator
+import com.intellij.openapi.roots.ModuleRootManager
 import com.intellij.openapi.roots.ModuleRootModificationUtil
 import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.openapi.vfs.VirtualFile
@@ -57,8 +60,11 @@ import com.jetbrains.rd.util.AtomicInteger
 import java.io.File
 import java.net.URLClassLoader
 import java.nio.file.Files
+import java.nio.file.Path
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
+import java.util.jar.JarEntry
+import java.util.jar.JarOutputStream
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -74,11 +80,14 @@ import org.jetbrains.kotlin.idea.base.util.module
 import org.jetbrains.kotlin.idea.core.util.toPsiFile
 import org.jetbrains.kotlin.idea.facet.KotlinFacetType
 import org.jetbrains.kotlin.platform.CommonPlatforms
+import org.jetbrains.kotlin.platform.TargetPlatform
+import org.jetbrains.kotlin.platform.isCommon
 import org.jetbrains.kotlin.platform.jvm.JvmPlatforms
 import org.jetbrains.kotlin.platform.jvm.isJvm
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.KtImplementationDetail
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertThrows
@@ -86,10 +95,12 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
+import org.junit.rules.RuleChain
+import org.junit.rules.TemporaryFolder
 
 internal class EmbeddedCompilerClientImplTest {
-  @get:Rule
-  val projectRule =
+  private val tempFolder = TemporaryFolder()
+  private val projectRule =
     AndroidProjectRule.withAndroidModels(
       JavaModuleModelBuilder.rootModuleBuilder,
       AndroidModuleModelBuilder(
@@ -112,6 +123,9 @@ internal class EmbeddedCompilerClientImplTest {
         },
       ),
     )
+
+  // Outer tempFolder deletes temp JARs only after projectRule tears down and releases VFS/ZipHandler locks on Windows.
+  @get:Rule val ruleChain: RuleChain = RuleChain.outerRule(tempFolder).around(projectRule)
 
   private val compiler: EmbeddedCompilerClientImpl by lazy {
     EmbeddedCompilerClientImpl(project = projectRule.project, log = Logger.getInstance(EmbeddedCompilerClientImplTest::class.java))
@@ -716,14 +730,10 @@ internal class EmbeddedCompilerClientImplTest {
         // and both caller styles (contextModule left on commonMain vs pre-bound to androidMain).
         for (commonPlatform in listOf(CommonPlatforms.defaultCommonPlatform, JvmPlatforms.defaultJvmPlatform)) {
           runWriteActionAndWait {
-            FacetManager.getInstance(commonModule)
-              .getFacetByType(KotlinFacetType.TYPE_ID)!!
-              .configuration
-              .settings
-              .apply {
-                targetPlatform = commonPlatform
-                updateMergedArguments()
-              }
+            FacetManager.getInstance(commonModule).getFacetByType(KotlinFacetType.TYPE_ID)!!.configuration.settings.apply {
+              targetPlatform = commonPlatform
+              updateMergedArguments()
+            }
           }
           for (bindAndroidContextUpFront in listOf(false, true)) {
             val inMemoryPsiFile = readAction {
@@ -775,4 +785,691 @@ internal class EmbeddedCompilerClientImplTest {
         commonRoot.delete(true)
       }
     }
+
+  private suspend fun compileKtToJar(tempDir: Path, moduleName: String, sourceRelPath: String, sourceCode: String): Path {
+    val srcRoot = tempDir.resolve("${moduleName}_src")
+    val outDir = tempDir.resolve("${moduleName}_out")
+    val jarPath = tempDir.resolve("$moduleName.jar")
+    Files.createDirectories(srcRoot)
+    Files.createDirectories(outDir)
+
+    val srcFile = srcRoot.resolve(sourceRelPath)
+    Files.createDirectories(srcFile.parent)
+    Files.writeString(srcFile, sourceCode)
+
+    val mod = runWriteActionAndWait {
+      val rootVf = VfsUtil.findFile(srcRoot, true)!!
+      PsiTestUtil.addModule(projectRule.project, ModuleType.EMPTY, moduleName, rootVf).also {
+        PsiTestUtil.addLibrary(it, "stdlib", AdtTestKotlinArtifacts.kotlinStdlib.parent, AdtTestKotlinArtifacts.kotlinStdlib.name)
+      }
+    }
+    try {
+      val srcVf = VfsUtil.findFile(srcFile, true)!!
+      val psiFile = readAction { srcVf.toPsiFile(projectRule.project) as KtFile }
+      val buildTargetReference = readAction { BuildTargetReference.from(mod, psiFile.virtualFile) }
+      val result =
+        compiler.compileRequest(
+          ApplicationLiveEditServices.LegacyForTests(projectRule.project),
+          listOf(psiFile),
+          buildTargetReference,
+          outDir,
+          EmptyProgressIndicator(),
+        )
+      assertInstanceOf<CompilationResult.Success>(result)
+
+      // Copy both .class files and META-INF/*.kotlin_module so K2 resolves top-level @JvmName facades from this jar.
+      JarOutputStream(Files.newOutputStream(jarPath)).use { jos ->
+        Files.walk(outDir).use { stream ->
+          stream
+            .filter { Files.isRegularFile(it) }
+            .forEach { file ->
+              val entryName = outDir.relativize(file).toString().replace(File.separatorChar, '/')
+              jos.putNextEntry(JarEntry(entryName))
+              jos.write(Files.readAllBytes(file))
+              jos.closeEntry()
+            }
+        }
+      }
+    } finally {
+      runWriteActionAndWait {
+        val model = ModuleManager.getInstance(projectRule.project).getModifiableModel()
+        model.disposeModule(mod)
+        model.commit()
+      }
+    }
+    return jarPath
+  }
+
+  private fun configureKmpFacet(
+    module: Module,
+    targetPlatform: TargetPlatform,
+    moduleName: String,
+    isMetadata: Boolean = false,
+    dependsOn: List<String> = emptyList(),
+  ) {
+    FacetUtil.addFacet(module, KotlinFacetType.INSTANCE, "Kotlin").configuration.settings.apply {
+      useProjectSettings = false
+      isHmppEnabled = true
+      this.targetPlatform = targetPlatform
+      implementedModuleNames = dependsOn
+      dependsOnModuleNames = dependsOn
+      compilerArguments =
+        if (isMetadata) {
+          K2MetadataCompilerArguments().apply {
+            multiPlatform = true
+            this.moduleName = moduleName
+          }
+        } else {
+          K2JVMCompilerArguments().apply {
+            multiPlatform = true
+            this.moduleName = moduleName
+          }
+        }
+      updateMergedArguments()
+    }
+  }
+
+  @Test
+  @OptIn(KaExperimentalApi::class)
+  fun `physical KMP commonMain file with Android and Desktop targets resolves Android facade instead of Skiko`(): Unit = runBlocking {
+    val appFile =
+      projectRule.fixture.addFileToProject(
+        "app/src/main/java/com/test/AndroidMarker.kt",
+        """
+        package com.test
+
+        class AndroidMarker
+        """
+          .trimIndent(),
+      )
+    val appModule = readAction { appFile.module!! }
+
+    val tempDir = tempFolder.newFolder("kmp_physical_test").toPath()
+    val skikoJar =
+      compileKtToJar(
+        tempDir = tempDir,
+        moduleName = "skikoInsetsLib",
+        sourceRelPath = "com/example/insets/WindowInsetsPadding.kt",
+        sourceCode =
+          """
+          @file:JvmName("WindowInsetsPadding_skikoKt")
+          package com.example.insets
+
+          fun safeContentPadding(): String = "skiko"
+          """
+            .trimIndent(),
+      )
+    val androidJar =
+      compileKtToJar(
+        tempDir = tempDir,
+        moduleName = "androidInsetsLib",
+        sourceRelPath = "com/example/insets/WindowInsetsPadding.kt",
+        sourceCode =
+          """
+          @file:JvmName("WindowInsetsPadding_androidKt")
+          package com.example.insets
+
+          fun safeContentPadding(): String = "android"
+          """
+            .trimIndent(),
+      )
+
+    val commonRoot = tempDir.resolve("commonMain")
+    val intermediateRoot = tempDir.resolve("jvmAndAndroidMain")
+    val jvmRoot = tempDir.resolve("jvmMain")
+    Files.createDirectories(commonRoot)
+    Files.createDirectories(intermediateRoot)
+    Files.createDirectories(jvmRoot)
+
+    val (commonModule, intermediateModule, jvmModule) =
+      runWriteActionAndWait {
+        val commonVf = VfsUtil.findFile(commonRoot, true)!!
+        val intermediateVf = VfsUtil.findFile(intermediateRoot, true)!!
+        val jvmVf = VfsUtil.findFile(jvmRoot, true)!!
+
+        val commonMod = PsiTestUtil.addModule(projectRule.project, ModuleType.EMPTY, "kmpCommonMain", commonVf)
+        val intermediateMod = PsiTestUtil.addModule(projectRule.project, ModuleType.EMPTY, "kmpJvmAndAndroidMain", intermediateVf)
+        val jvmMod = PsiTestUtil.addModule(projectRule.project, ModuleType.EMPTY, "kmpJvmMain", jvmVf)
+
+        for (mod in listOf(commonMod, intermediateMod, jvmMod)) {
+          PsiTestUtil.addLibrary(mod, "stdlib", AdtTestKotlinArtifacts.kotlinStdlib.parent, AdtTestKotlinArtifacts.kotlinStdlib.name)
+          PsiTestUtil.addLibrary(mod, "skikoInsets", skikoJar.parent.toString(), skikoJar.fileName.toString())
+        }
+        PsiTestUtil.addLibrary(appModule, "androidInsets", androidJar.parent.toString(), androidJar.fileName.toString())
+
+        ModuleRootModificationUtil.addDependency(intermediateMod, commonMod)
+        ModuleRootModificationUtil.addDependency(appModule, commonMod)
+        ModuleRootModificationUtil.addDependency(appModule, intermediateMod)
+        ModuleRootModificationUtil.addDependency(jvmMod, commonMod)
+        ModuleRootModificationUtil.addDependency(jvmMod, intermediateMod)
+
+        configureKmpFacet(commonMod, JvmPlatforms.jvm11, "common_jvm")
+        configureKmpFacet(intermediateMod, JvmPlatforms.jvm11, "intermediate_jvm", dependsOn = listOf(commonMod.name))
+        configureKmpFacet(
+          appModule,
+          JvmPlatforms.jvm11,
+          "app_android_debug",
+          dependsOn = listOf(commonMod.name, intermediateMod.name),
+        )
+        configureKmpFacet(
+          jvmMod,
+          JvmPlatforms.jvm11,
+          "desktop_jvm",
+          dependsOn = listOf(commonMod.name, intermediateMod.name),
+        )
+        Triple(commonMod, intermediateMod, jvmMod)
+      }
+
+    val commonAppPath = commonRoot.resolve("com/test/App.kt")
+    Files.createDirectories(commonAppPath.parent)
+    Files.writeString(
+      commonAppPath,
+      """
+      package com.test
+
+      import com.example.insets.safeContentPadding
+
+      fun appScreen(): String = safeContentPadding()
+
+      class AppModel {
+        internal fun label(): String = safeContentPadding()
+      }
+      """
+        .trimIndent(),
+    )
+    val commonAppVf = VfsUtil.findFile(commonAppPath, true)!!
+    val commonAppPsi = readAction { commonAppVf.toPsiFile(projectRule.project) as KtFile }
+
+    val intermediatePath = intermediateRoot.resolve("com/test/Intermediate.kt")
+    Files.createDirectories(intermediatePath.parent)
+    Files.writeString(
+      intermediatePath,
+      """
+      package com.test
+
+      import com.example.insets.safeContentPadding
+
+      fun intermediateScreen(): String = safeContentPadding()
+      """
+        .trimIndent(),
+    )
+    val intermediateFileVf = VfsUtil.findFile(intermediatePath, true)!!
+    val intermediatePsi = readAction { intermediateFileVf.toPsiFile(projectRule.project) as KtFile }
+
+    val jvmMainPath = jvmRoot.resolve("com/test/DesktopEntry.kt")
+    Files.createDirectories(jvmMainPath.parent)
+    Files.writeString(
+      jvmMainPath,
+      """
+      package com.test
+
+      import com.example.insets.safeContentPadding
+
+      fun desktopScreen(): String = safeContentPadding()
+      """
+        .trimIndent(),
+    )
+    val jvmMainFileVf = VfsUtil.findFile(jvmMainPath, true)!!
+    val jvmMainPsi = readAction { jvmMainFileVf.toPsiFile(projectRule.project) as KtFile }
+
+    readAction {
+      assertEquals(commonModule, ModuleUtilCore.findModuleForFile(commonAppPsi))
+      assertEquals(intermediateModule, ModuleUtilCore.findModuleForFile(intermediatePsi))
+      assertEquals(jvmModule, ModuleUtilCore.findModuleForFile(jvmMainPsi))
+      assertTrue(commonModule.implementingModules.count { it.platform.isJvm() } >= 2)
+      assertTrue(intermediateModule.implementingModules.count { it.platform.isJvm() } >= 2)
+    }
+
+    // Test physical commonMain across all three TargetPlatform shapes:
+    // 1) Single JvmPlatform (Android + Desktop with same JVM target -> isCommon() == false)
+    // 2) Multi-JVM TargetPlatform (Android + Desktop with distinct JVM targets -> isCommon() == false)
+    // 3) CommonPlatforms (Android + Desktop + iOS -> isCommon() == true)
+    val multiJvmPlatform = TargetPlatform(setOf(JvmPlatforms.jvm8.single(), JvmPlatforms.jvm17.single()))
+    val platformCases =
+      listOf(
+        JvmPlatforms.jvm11 to false,
+        multiJvmPlatform to false,
+        CommonPlatforms.defaultCommonPlatform to true,
+      )
+    for ((commonPlatform, expectedIsCommon) in platformCases) {
+      runWriteActionAndWait {
+        val facetManager = FacetManager.getInstance(commonModule)
+        val modifiableModel = facetManager.createModifiableModel()
+        modifiableModel.getFacetByType(KotlinFacetType.TYPE_ID)?.let { modifiableModel.removeFacet(it) }
+        modifiableModel.commit()
+        configureKmpFacet(
+          commonModule,
+          commonPlatform,
+          if (expectedIsCommon) "common_metadata" else "common_jvm",
+          isMetadata = expectedIsCommon,
+        )
+      }
+      readAction {
+        assertEquals(commonPlatform, commonModule.platform)
+        assertEquals(expectedIsCommon, commonModule.platform.isCommon())
+      }
+
+      val outDir = tempFolder.newFolder().toPath()
+      val buildTargetReference = readAction { BuildTargetReference.from(commonModule, commonAppPsi.virtualFile) }
+      val result =
+        compiler.compileRequest(
+          ApplicationLiveEditServices.LegacyForTests(projectRule.project),
+          listOf(commonAppPsi),
+          buildTargetReference,
+          outDir,
+          EmptyProgressIndicator(),
+        )
+      assertInstanceOf<CompilationResult.Success>(result)
+      assertEquals(listOf("AppKt.class", "AppModel.class"), outDir.toFileNameSet().sorted())
+
+      val appKtBytes = Files.readAllBytes(outDir.resolve("com/test/AppKt.class")).decodeToString()
+      assertTrue(
+        "Expected reference to WindowInsetsPadding_androidKt for $commonPlatform",
+        appKtBytes.contains("WindowInsetsPadding_androidKt"),
+      )
+      assertFalse(
+        "Unexpected reference to WindowInsetsPadding_skikoKt for $commonPlatform",
+        appKtBytes.contains("WindowInsetsPadding_skikoKt"),
+      )
+
+      // Execute against ONLY the Android library jar (no Skiko jar) to verify runtime compatibility and internal mangling.
+      URLClassLoader(arrayOf(outDir.toUri().toURL(), androidJar.toUri().toURL()), null).use { loader ->
+        val appKtClass = loader.loadClass("com.test.AppKt")
+        assertEquals("android", appKtClass.getDeclaredMethod("appScreen").invoke(null))
+
+        val modelClass = loader.loadClass("com.test.AppModel")
+        val modelInstance = modelClass.getDeclaredConstructor().newInstance()
+        val mangledMethod = modelClass.getDeclaredMethod("label\$app_android_debug")
+        assertEquals("android", mangledMethod.invoke(modelInstance))
+      }
+    }
+
+    // Intermediate jvmAndAndroidMain source set must also compile in the Android context.
+    val intermediateOut = tempFolder.newFolder("kmp_intermediate_out").toPath()
+    val intermediateBuildTargetReference = readAction { BuildTargetReference.from(intermediateModule, intermediatePsi.virtualFile) }
+    val intermediateResult =
+      compiler.compileRequest(
+        ApplicationLiveEditServices.LegacyForTests(projectRule.project),
+        listOf(intermediatePsi),
+        intermediateBuildTargetReference,
+        intermediateOut,
+        EmptyProgressIndicator(),
+      )
+    assertInstanceOf<CompilationResult.Success>(intermediateResult)
+    val intermediateBytes = Files.readAllBytes(intermediateOut.resolve("com/test/IntermediateKt.class")).decodeToString()
+    assertTrue(intermediateBytes.contains("WindowInsetsPadding_androidKt"))
+    assertFalse(intermediateBytes.contains("WindowInsetsPadding_skikoKt"))
+
+    // Leaf jvmMain source set must stay in the Desktop/JVM context (not redirected to Android).
+    val jvmOut = tempFolder.newFolder("kmp_jvm_out").toPath()
+    val buildTargetReference = readAction { BuildTargetReference.from(jvmModule, jvmMainPsi.virtualFile) }
+    val result =
+      compiler.compileRequest(
+        ApplicationLiveEditServices.LegacyForTests(projectRule.project),
+        listOf(jvmMainPsi),
+        buildTargetReference,
+        jvmOut,
+        EmptyProgressIndicator(),
+      )
+    assertInstanceOf<CompilationResult.Success>(result)
+    val bytes = Files.readAllBytes(jvmOut.resolve("com/test/DesktopEntryKt.class")).decodeToString()
+    assertTrue(bytes.contains("WindowInsetsPadding_skikoKt"))
+    assertFalse(bytes.contains("WindowInsetsPadding_androidKt"))
+  }
+
+  @Test
+  @OptIn(KaExperimentalApi::class)
+  fun `physical KMP commonMain file with single Android JVM implementer compiles cleanly`(): Unit = runBlocking {
+    val appFile =
+      projectRule.fixture.addFileToProject(
+        "app/src/main/java/com/test/AndroidMarkerSingle.kt",
+        """
+        package com.test
+
+        class AndroidMarkerSingle
+        """
+          .trimIndent(),
+      )
+    val appModule = readAction { appFile.module!! }
+
+    val tempDir = tempFolder.newFolder("kmp_single_jvm_test").toPath()
+    val commonRoot = tempDir.resolve("commonMain")
+    Files.createDirectories(commonRoot)
+
+    val commonModule = runWriteActionAndWait {
+      val commonVf = VfsUtil.findFile(commonRoot, true)!!
+      val commonMod = PsiTestUtil.addModule(projectRule.project, ModuleType.EMPTY, "singleJvmCommonMain", commonVf)
+      PsiTestUtil.addLibrary(commonMod, "stdlib", AdtTestKotlinArtifacts.kotlinStdlib.parent, AdtTestKotlinArtifacts.kotlinStdlib.name)
+      ModuleRootModificationUtil.addDependency(appModule, commonMod)
+
+      configureKmpFacet(commonMod, CommonPlatforms.defaultCommonPlatform, "single_common_metadata", isMetadata = true)
+      configureKmpFacet(appModule, JvmPlatforms.defaultJvmPlatform, "app_android_debug", dependsOn = listOf(commonMod.name))
+      commonMod
+    }
+
+    val commonFilePath = commonRoot.resolve("com/test/CommonOnly.kt")
+    Files.createDirectories(commonFilePath.parent)
+    Files.writeString(
+      commonFilePath,
+      """
+      package com.test
+
+      fun commonGreeting(): String = "hello"
+
+      class CommonOnlyModel {
+        internal fun value(): String = commonGreeting()
+      }
+      """
+        .trimIndent(),
+    )
+    val commonFileVf = VfsUtil.findFile(commonFilePath, true)!!
+    val commonPsi = readAction { commonFileVf.toPsiFile(projectRule.project) as KtFile }
+
+    readAction {
+      assertEquals(1, commonModule.implementingModules.count { it.platform.isJvm() })
+    }
+
+    val outDir = tempFolder.newFolder("kmp_single_jvm_out").toPath()
+    val buildTargetReference = readAction { BuildTargetReference.from(commonModule, commonPsi.virtualFile) }
+    val result =
+      compiler.compileRequest(
+        ApplicationLiveEditServices.LegacyForTests(projectRule.project),
+        listOf(commonPsi),
+        buildTargetReference,
+        outDir,
+        EmptyProgressIndicator(),
+      )
+    assertInstanceOf<CompilationResult.Success>(result)
+    assertEquals(listOf("CommonOnlyKt.class", "CommonOnlyModel.class"), outDir.toFileNameSet().sorted())
+
+    URLClassLoader(arrayOf(outDir.toUri().toURL()), null).use { loader ->
+      val modelClass = loader.loadClass("com.test.CommonOnlyModel")
+      val modelInstance = modelClass.getDeclaredConstructor().newInstance()
+      assertEquals("hello", modelClass.getDeclaredMethod("value\$app_android_debug").invoke(modelInstance))
+    }
+  }
+
+  @Test
+  @OptIn(KaExperimentalApi::class)
+  fun `physical KMP commonMain compile error reports original file name and line number`(): Unit = runBlocking {
+    val appFile =
+      projectRule.fixture.addFileToProject(
+        "app/src/main/java/com/test/AndroidErrorMarker.kt",
+        """
+        package com.test
+
+        class AndroidErrorMarker
+        """
+          .trimIndent(),
+      )
+    val appModule = readAction { appFile.module!! }
+
+    val tempDir = tempFolder.newFolder("kmp_error_line_test").toPath()
+    val commonRoot = tempDir.resolve("commonMain")
+    val jvmRoot = tempDir.resolve("jvmMain")
+    Files.createDirectories(commonRoot)
+    Files.createDirectories(jvmRoot)
+
+    val commonModule = runWriteActionAndWait {
+      val commonVf = VfsUtil.findFile(commonRoot, true)!!
+      val jvmVf = VfsUtil.findFile(jvmRoot, true)!!
+      val commonMod = PsiTestUtil.addModule(projectRule.project, ModuleType.EMPTY, "kmpErrCommonMain", commonVf)
+      val jvmMod = PsiTestUtil.addModule(projectRule.project, ModuleType.EMPTY, "kmpErrJvmMain", jvmVf)
+
+      for (mod in listOf(commonMod, jvmMod)) {
+        ModuleRootModificationUtil.setModuleSdk(mod, ModuleRootManager.getInstance(appModule).sdk)
+        PsiTestUtil.addLibrary(mod, "stdlib", AdtTestKotlinArtifacts.kotlinStdlib.parent, AdtTestKotlinArtifacts.kotlinStdlib.name)
+      }
+      ModuleRootModificationUtil.addDependency(appModule, commonMod)
+      ModuleRootModificationUtil.addDependency(jvmMod, commonMod)
+
+      configureKmpFacet(commonMod, JvmPlatforms.jvm11, "common_jvm")
+      configureKmpFacet(appModule, JvmPlatforms.jvm11, "app_android_debug", dependsOn = listOf(commonMod.name))
+      configureKmpFacet(jvmMod, JvmPlatforms.jvm11, "desktop_jvm", dependsOn = listOf(commonMod.name))
+      commonMod
+    }
+
+    val brokenPath = commonRoot.resolve("com/test/BrokenApp.kt")
+    Files.createDirectories(brokenPath.parent)
+    Files.writeString(
+      brokenPath,
+      """
+      package com.test
+
+      fun brokenScreen(): String {
+        val ok = "hi"
+        return missingSymbol()
+      }
+      """
+        .trimIndent(),
+    )
+    val brokenVf = VfsUtil.findFile(brokenPath, true)!!
+    val brokenPsi = readAction { brokenVf.toPsiFile(projectRule.project) as KtFile }
+
+    val outDir = tempFolder.newFolder("kmp_error_line_out").toPath()
+    val buildTargetReference = readAction { BuildTargetReference.from(commonModule, brokenPsi.virtualFile) }
+    val result =
+      compiler.compileRequest(
+        ApplicationLiveEditServices.LegacyForTests(projectRule.project),
+        listOf(brokenPsi),
+        buildTargetReference,
+        outDir,
+        EmptyProgressIndicator(),
+      )
+    val error = assertInstanceOf<CompilationResult.CompilationError>(result)
+    val updateException = assertInstanceOf<LiveEditUpdateException>(error.e)
+    assertEquals("BrokenApp.kt", updateException.sourceFilename)
+    assertTrue(
+      "Expected diagnostic to report BrokenApp.kt at line 5, got: ${updateException.details}",
+      updateException.details.contains("BrokenApp.kt at line 5"),
+    )
+  }
+
+  @Test
+  @OptIn(KaExperimentalApi::class)
+  fun `physical KMP commonMain file using expect actual compiles against Android actual`(): Unit = runBlocking {
+    val appFile =
+      projectRule.fixture.addFileToProject(
+        "app/src/main/java/com/test/Platform.android.kt",
+        """
+        package com.test
+
+        actual fun platformName(): String = "Android"
+        """
+          .trimIndent(),
+      )
+    val appModule = readAction { appFile.module!! }
+
+    val tempDir = tempFolder.newFolder("kmp_expect_actual_test").toPath()
+    val commonRoot = tempDir.resolve("commonMain")
+    val jvmRoot = tempDir.resolve("jvmMain")
+    Files.createDirectories(commonRoot)
+    Files.createDirectories(jvmRoot)
+
+    val commonModule = runWriteActionAndWait {
+      val commonVf = VfsUtil.findFile(commonRoot, true)!!
+      val jvmVf = VfsUtil.findFile(jvmRoot, true)!!
+      val commonMod = PsiTestUtil.addModule(projectRule.project, ModuleType.EMPTY, "kmpExpectCommonMain", commonVf)
+      val jvmMod = PsiTestUtil.addModule(projectRule.project, ModuleType.EMPTY, "kmpExpectJvmMain", jvmVf)
+
+      for (mod in listOf(commonMod, jvmMod)) {
+        ModuleRootModificationUtil.setModuleSdk(mod, ModuleRootManager.getInstance(appModule).sdk)
+        PsiTestUtil.addLibrary(mod, "stdlib", AdtTestKotlinArtifacts.kotlinStdlib.parent, AdtTestKotlinArtifacts.kotlinStdlib.name)
+      }
+      ModuleRootModificationUtil.addDependency(appModule, commonMod)
+      ModuleRootModificationUtil.addDependency(jvmMod, commonMod)
+
+      configureKmpFacet(commonMod, JvmPlatforms.jvm11, "common_jvm")
+      configureKmpFacet(appModule, JvmPlatforms.jvm11, "app_android_debug", dependsOn = listOf(commonMod.name))
+      configureKmpFacet(jvmMod, JvmPlatforms.jvm11, "desktop_jvm", dependsOn = listOf(commonMod.name))
+      commonMod
+    }
+
+    val jvmActualPath = jvmRoot.resolve("com/test/Platform.jvm.kt")
+    Files.createDirectories(jvmActualPath.parent)
+    Files.writeString(
+      jvmActualPath,
+      """
+      package com.test
+
+      actual fun platformName(): String = "Desktop"
+      """
+        .trimIndent(),
+    )
+    VfsUtil.findFile(jvmActualPath, true)!!
+
+    val expectFilePath = commonRoot.resolve("com/test/Platform.kt")
+    Files.createDirectories(expectFilePath.parent)
+    Files.writeString(
+      expectFilePath,
+      """
+      package com.test
+
+      expect fun platformName(): String
+
+      fun greetingFromExpectFile(): String = "Hello from " + platformName()
+      """
+        .trimIndent(),
+    )
+    val expectVf = VfsUtil.findFile(expectFilePath, true)!!
+    val expectPsi = readAction { expectVf.toPsiFile(projectRule.project) as KtFile }
+
+    val callerFilePath = commonRoot.resolve("com/test/PlatformCaller.kt")
+    Files.writeString(
+      callerFilePath,
+      """
+      package com.test
+
+      fun greetingFromCaller(): String = "Hi from " + platformName()
+      """
+        .trimIndent(),
+    )
+    val callerVf = VfsUtil.findFile(callerFilePath, true)!!
+    val callerPsi = readAction { callerVf.toPsiFile(projectRule.project) as KtFile }
+
+    // 1) Compiling a commonMain file that calls an expect function declared in another commonMain file.
+    val callerOut = tempFolder.newFolder("kmp_expect_caller_out").toPath()
+    val callerBuildTargetReference = readAction { BuildTargetReference.from(commonModule, callerPsi.virtualFile) }
+    val callerResult =
+      compiler.compileRequest(
+        ApplicationLiveEditServices.LegacyForTests(projectRule.project),
+        listOf(callerPsi),
+        callerBuildTargetReference,
+        callerOut,
+        EmptyProgressIndicator(),
+      )
+    assertInstanceOf<CompilationResult.Success>(callerResult)
+    val callerBytes = Files.readAllBytes(callerOut.resolve("com/test/PlatformCallerKt.class")).decodeToString()
+    assertTrue(
+      "Expected call to Android actual facade Platform_androidKt",
+      callerBytes.contains("Platform_androidKt"),
+    )
+    assertFalse(
+      "Unexpected call to Desktop actual facade Platform_jvmKt",
+      callerBytes.contains("Platform_jvmKt"),
+    )
+
+    // 2) Compiling a commonMain file that declares an expect function in the same file reports a clean
+    //    CompilationError mapped to the original file and line (rather than an internal crash or line -1).
+    val expectOut = tempFolder.newFolder("kmp_expect_decl_out").toPath()
+    val expectBuildTargetReference = readAction { BuildTargetReference.from(commonModule, expectPsi.virtualFile) }
+    val expectResult =
+      compiler.compileRequest(
+        ApplicationLiveEditServices.LegacyForTests(projectRule.project),
+        listOf(expectPsi),
+        expectBuildTargetReference,
+        expectOut,
+        EmptyProgressIndicator(),
+      )
+    val error = assertInstanceOf<CompilationResult.CompilationError>(expectResult)
+    val updateException = assertInstanceOf<LiveEditUpdateException>(error.e)
+    assertEquals("Platform.kt", updateException.sourceFilename)
+    assertTrue(
+      "Expected diagnostic mapped to Platform.kt at line 3, got: ${updateException.details}",
+      updateException.details.contains("Platform.kt at line 3"),
+    )
+  }
+
+  @Test
+  @OptIn(KaExperimentalApi::class)
+  fun `physical KMP commonMain file with single Android JVM implementer and JVM platform redirects to Android`(): Unit = runBlocking {
+    val appFile =
+      projectRule.fixture.addFileToProject(
+        "app/src/main/java/com/test/SingleJvmPlatform.android.kt",
+        """
+        package com.test
+
+        actual fun singleTargetPlatform(): String = "AndroidOnly"
+        """
+          .trimIndent(),
+      )
+    val appModule = readAction { appFile.module!! }
+
+    val tempDir = tempFolder.newFolder("kmp_android_only_jvm_test").toPath()
+    val commonRoot = tempDir.resolve("commonMain")
+    Files.createDirectories(commonRoot)
+
+    val commonModule = runWriteActionAndWait {
+      val commonVf = VfsUtil.findFile(commonRoot, true)!!
+      val commonMod = PsiTestUtil.addModule(projectRule.project, ModuleType.EMPTY, "androidOnlyKmpCommonMain", commonVf)
+      ModuleRootModificationUtil.setModuleSdk(commonMod, ModuleRootManager.getInstance(appModule).sdk)
+      PsiTestUtil.addLibrary(commonMod, "stdlib", AdtTestKotlinArtifacts.kotlinStdlib.parent, AdtTestKotlinArtifacts.kotlinStdlib.name)
+      ModuleRootModificationUtil.addDependency(appModule, commonMod)
+
+      // Android-only KMP library (com.android.kotlin.multiplatform.library) or Android+iOS synced on Linux/Windows:
+      // commonMain gets a JVM TargetPlatform (isCommon() == false) while only 1 JVM implementer (androidMain) exists.
+      configureKmpFacet(commonMod, JvmPlatforms.jvm11, "android_only_common_jvm")
+      configureKmpFacet(appModule, JvmPlatforms.jvm11, "app_android_debug", dependsOn = listOf(commonMod.name))
+      commonMod
+    }
+
+    val expectPath = commonRoot.resolve("com/test/SingleJvmPlatform.kt")
+    Files.createDirectories(expectPath.parent)
+    Files.writeString(
+      expectPath,
+      """
+      package com.test
+
+      expect fun singleTargetPlatform(): String
+      """
+        .trimIndent(),
+    )
+    VfsUtil.findFile(expectPath, true)!!
+
+    val callerPath = commonRoot.resolve("com/test/SingleJvmCaller.kt")
+    Files.writeString(
+      callerPath,
+      """
+      package com.test
+
+      fun singleTargetGreeting(): String = "Hello " + singleTargetPlatform()
+      """
+        .trimIndent(),
+    )
+    val callerVf = VfsUtil.findFile(callerPath, true)!!
+    val callerPsi = readAction { callerVf.toPsiFile(projectRule.project) as KtFile }
+
+    readAction {
+      assertEquals(JvmPlatforms.jvm11, commonModule.platform)
+      assertFalse(commonModule.platform.isCommon())
+      assertEquals(1, commonModule.implementingModules.count { it.platform.isJvm() })
+    }
+
+    val outDir = tempFolder.newFolder("kmp_android_only_jvm_out").toPath()
+    val buildTargetReference = readAction { BuildTargetReference.from(commonModule, callerPsi.virtualFile) }
+    val result =
+      compiler.compileRequest(
+        ApplicationLiveEditServices.LegacyForTests(projectRule.project),
+        listOf(callerPsi),
+        buildTargetReference,
+        outDir,
+        EmptyProgressIndicator(),
+      )
+    assertInstanceOf<CompilationResult.Success>(result)
+    val callerBytes = Files.readAllBytes(outDir.resolve("com/test/SingleJvmCallerKt.class")).decodeToString()
+    assertTrue(
+      "Expected call to Android actual facade SingleJvmPlatform_androidKt",
+      callerBytes.contains("SingleJvmPlatform_androidKt"),
+    )
+  }
 }

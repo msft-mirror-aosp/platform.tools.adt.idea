@@ -32,6 +32,7 @@ import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.util.text.StringUtil
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.testFramework.LightVirtualFile
 import org.jetbrains.kotlin.analysis.api.KaExperimentalApi
@@ -78,8 +79,14 @@ private fun getCompileTargetFile(original: KtFile, module: Module): KtFile {
     return original
   }
 
+  // `module` is a non-Android shared KMP source set with an Android implementer.
+  // `KaFirCompilerFacility`'s built-in single-JVM actualizer only runs when `module.platform.isCommon()` is
+  // true. When all active targets are JVM (e.g. androidTarget() + jvm(), com.android.kotlin.multiplatform.library,
+  // or Android + iOS synced on Linux/Windows where Apple targets are inactive), KGP assigns the shared source
+  // set a JVM platform (`isCommon() == false`), so it must always redirect to `androidModule` regardless of
+  // how many JVM implementers exist. Keep the KMT-1285 `< 2` guard only for true common platforms.
   val isInMemory = original.isDangling || original.virtualFile is LightVirtualFile
-  if (!isInMemory && (!module.platform.isCommon() || module.implementingModules.filter { it.platform.isJvm() }.size < 2)) {
+  if (!isInMemory && module.platform.isCommon() && module.implementingModules.count { it.platform.isJvm() } < 2) {
     return original
   }
 
@@ -127,39 +134,32 @@ fun backendCodeGenForK2(file: KtFile, module: Module, configurator: KaCompilatio
       }
       when (val result = this@analyze.compile(substituteFile, options)) {
         is KaCompilationResult.Success -> result
-        is KaCompilationResult.Failure -> throw compilationError(result.errors.map { it.getErrorMessage() })
+        is KaCompilationResult.Failure -> throw compilationError(result.errors.map { it.getErrorMessage(file, substituteFile) })
       }
     }
   }
 }
 
-private fun KaDiagnostic.getErrorMessage(): CompilerErrorSource {
-  var message = getDefaultMessageWithFactoryName()
+private fun KaDiagnostic.getErrorMessage(originalFile: KtFile, substituteFile: KtFile): CompilerErrorSource {
+  val message = getDefaultMessageWithFactoryName()
   if (this is KaDiagnosticWithPsi<*>) {
-    var lineNumber = getLineNumberFromKaDiagnostic()
-    var file = psi.containingFile
-    return CompilerErrorSource(severity.toString(), message, file, lineNumber)
+    val psiFile = psi.containingFile
+    val reportedFile = if (psiFile == substituteFile) originalFile else psiFile
+    val lineNumber = getLineNumberFromKaDiagnostic()
+    return CompilerErrorSource(severity.toString(), message, reportedFile, lineNumber)
   } else {
     return CompilerErrorSource(severity.toString(), message, null, -1)
   }
 }
 
 private fun KaDiagnosticWithPsi<*>.getLineNumberFromKaDiagnostic(): Int {
-  val containingFile = psi.containingFile
-  if (containingFile == null) {
-    return -1
-  }
-
-  val project: Project = containingFile.project
-  val psiDocumentManager: PsiDocumentManager = PsiDocumentManager.getInstance(project)
-  val document = psiDocumentManager.getDocument(containingFile)
-
-  if (document == null) {
-    return -1
-  }
-
+  val containingFile = psi.containingFile ?: return -1
   val textOffset = psi.textOffset
-  val lineNumber = document.getLineNumber(textOffset)
+  val document = PsiDocumentManager.getInstance(containingFile.project).getDocument(containingFile)
+  if (document != null && textOffset in 0..document.textLength) {
+    return document.getLineNumber(textOffset) + 1
+  }
 
-  return lineNumber + 1
+  val text = containingFile.text
+  return if (textOffset in 0..text.length) StringUtil.offsetToLineNumber(text, textOffset) + 1 else -1
 }
