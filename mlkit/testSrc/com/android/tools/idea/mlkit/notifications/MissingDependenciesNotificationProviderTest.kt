@@ -48,6 +48,7 @@ import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiFile
 import com.intellij.testFramework.EdtTestUtil
+import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.replaceService
 import com.intellij.ui.EditorNotificationPanel
 import com.intellij.ui.HyperlinkLabel
@@ -180,7 +181,7 @@ class MissingDependenciesNotificationProviderTest {
           "Would you like to add these now?"
       )
 
-    saveAllDocumentsOnEdt()
+    saveAndFlushAllDocuments()
     val updatedCatalog = catalogFile.readText()
     assertThat(updatedCatalog).contains("tensorflowLiteSupport = \"0.1.0\"")
     assertThat(updatedCatalog).contains("tensorflowLiteMetadata = \"0.1.0\"")
@@ -223,7 +224,7 @@ class MissingDependenciesNotificationProviderTest {
 
     runOnLockFreeSwingEdt { findHyperlink(panel, "Add Now").doClick() }
 
-    saveAllDocumentsOnEdt()
+    saveAndFlushAllDocuments()
     val updatedCatalog = catalogFile.readText()
     assertThat(updatedCatalog).contains("tensorflowLiteSupport = \"0.1.0\"")
     assertThat(updatedCatalog).contains("tensorflowLiteMetadata = \"0.1.0\"")
@@ -268,7 +269,7 @@ class MissingDependenciesNotificationProviderTest {
         "This operation requires the library org.tensorflow:tensorflow-lite-metadata.\n\n" + "Would you like to add this now?"
       )
 
-    saveAllDocumentsOnEdt()
+    saveAndFlushAllDocuments()
     val updatedBuild = buildFile.readText()
     assertThat(updatedBuild).contains("org.tensorflow:tensorflow-lite-support:0.1.0")
     assertThat(updatedBuild).contains("implementation 'org.tensorflow:tensorflow-lite-metadata:0.1.0'")
@@ -289,7 +290,7 @@ class MissingDependenciesNotificationProviderTest {
     runOnLockFreeSwingEdt { findHyperlink(panel, "Add Now").doClick() }
 
     assertThat(dialogMessages).hasSize(1)
-    saveAllDocumentsOnEdt()
+    saveAndFlushAllDocuments()
     assertThat(buildFile.readText()).isEqualTo(initialBuild)
     assertThat(syncTriggers).isEmpty()
   }
@@ -463,12 +464,14 @@ class MissingDependenciesNotificationProviderTest {
     }
   }
 
-  private fun saveAllDocumentsOnEdt() {
+  private fun saveAndFlushAllDocuments() {
     EdtTestUtil.runInEdtAndWait<RuntimeException> {
       ApplicationManager.getApplication().runWriteAction {
         FileDocumentManager.getInstance().saveAllDocuments()
       }
     }
+    // Flush asynchronous VFS content writes off EDT before reading files via java.io.File.
+    PlatformTestUtil.flushAllPendingVFSUpdates()
   }
 
   private fun findHyperlink(panel: EditorNotificationPanel, text: String): HyperlinkLabel =
