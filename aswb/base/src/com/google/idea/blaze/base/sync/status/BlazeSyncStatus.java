@@ -15,7 +15,6 @@
  */
 package com.google.idea.blaze.base.sync.status;
 
-import com.google.idea.blaze.base.sync.SyncMode;
 import com.google.idea.blaze.base.sync.SyncResult;
 import com.intellij.openapi.project.Project;
 
@@ -35,9 +34,7 @@ public interface BlazeSyncStatus {
     return project.getService(BlazeSyncStatus.class);
   }
 
-  void syncStarted();
-
-  void syncEnded(SyncMode syncMode, SyncResult syncResult);
+  void syncEnded(SyncResult syncResult);
 
   /**
    * @deprecated For query sync, use {@link

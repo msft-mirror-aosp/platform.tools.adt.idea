@@ -16,7 +16,6 @@
 package com.google.idea.blaze.base.qsync;
 
 import com.google.idea.blaze.base.qsync.QuerySyncManager.OperationType;
-import com.google.idea.blaze.base.sync.SyncMode;
 import com.google.idea.blaze.base.sync.SyncResult;
 import com.google.idea.blaze.base.sync.status.BlazeSyncStatus;
 import com.intellij.openapi.project.Project;
@@ -39,24 +38,11 @@ public class QuerySyncStatus {
 
   public void operationStarted(OperationType operationType) {
     currentOperation.set(operationType);
-    BlazeSyncStatus.getInstance(project).syncStarted();
   }
 
-  public void operationCancelled() {
-    operationEnded(SyncResult.CANCELLED);
-  }
-
-  public void operationFailed() {
-    operationEnded(SyncResult.FAILURE);
-  }
-
-  public void operationEnded() {
-    operationEnded(SyncResult.SUCCESS);
-  }
-
-  private void operationEnded(SyncResult result) {
+  public void operationEnded(SyncResult result) {
     currentOperation.set(null);
-    BlazeSyncStatus.getInstance(project).syncEnded(SyncMode.FULL, result);
+    BlazeSyncStatus.getInstance(project).syncEnded(result);
   }
 
   public Optional<OperationType> currentOperation() {

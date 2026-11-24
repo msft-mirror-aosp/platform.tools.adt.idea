@@ -16,12 +16,8 @@
 package com.google.idea.blaze.base.sync.status;
 
 import com.google.idea.blaze.base.qsync.QuerySyncManager;
-import com.google.idea.blaze.base.settings.Blaze;
-import com.google.idea.blaze.base.settings.BlazeImportSettings.ProjectType;
-import com.google.idea.blaze.base.sync.SyncMode;
 import com.google.idea.blaze.base.sync.SyncResult;
 import com.intellij.openapi.project.Project;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Per-project listener for changes to BUILD files, and other changes requiring an incremental sync.
@@ -29,11 +25,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class BlazeSyncStatusImpl implements BlazeSyncStatus {
 
   private final Project project;
-
-  public static BlazeSyncStatusImpl getImpl(Project project) {
-    return (BlazeSyncStatusImpl) BlazeSyncStatus.getInstance(project);
-  }
-
   private final BlazeSyncStatusStateManager stateManager;
 
   public BlazeSyncStatusImpl(Project project) {
@@ -55,20 +46,13 @@ public class BlazeSyncStatusImpl implements BlazeSyncStatus {
   }
 
   @Override
-  public void syncStarted() {}
-
-  @Override
-  public void syncEnded(SyncMode syncMode, SyncResult syncResult) {
+  public void syncEnded(SyncResult syncResult) {
     stateManager.setLastSyncFailed(syncResult == SyncResult.FAILURE);
-    if (allTargetsBuild(syncMode) && syncResult == SyncResult.SUCCESS) {
+    if (syncResult == SyncResult.SUCCESS) {
       stateManager.setDirty(false);
     } else if (syncResult == SyncResult.PARTIAL_SUCCESS || syncResult == SyncResult.CANCELLED) {
       stateManager.setDirty(true);
     }
-  }
-
-  private static boolean allTargetsBuild(SyncMode mode) {
-    return mode == SyncMode.FULL || mode == SyncMode.INCREMENTAL;
   }
 
   @Override

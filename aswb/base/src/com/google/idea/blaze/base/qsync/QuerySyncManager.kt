@@ -488,18 +488,14 @@ constructor(private val project: Project, private val coroutineScope: CoroutineS
       }
       .fold(
         onSuccess = { operationSucceeded ->
-          if (operationSucceeded) {
-            syncStatus.operationEnded()
-          } else {
-            syncStatus.operationFailed()
-          }
+          syncStatus.operationEnded(if (operationSucceeded) SyncResult.SUCCESS else SyncResult.FAILURE)
           operationSucceeded
         },
         onFailure = { throwable ->
           if (throwable is CancellationException) {
-            syncStatus.operationCancelled()
+            syncStatus.operationEnded(SyncResult.CANCELLED)
           } else {
-            syncStatus.operationFailed()
+            syncStatus.operationEnded(SyncResult.FAILURE)
             logger.error("Sync failed", throwable)
           }
           false
