@@ -252,22 +252,27 @@ private fun extractInlineCalls(location: Location): List<InlineCallInfo> {
 /*
 On Dex/ART, D8 register allocation can split a single inline function's marker
 variable (e.g. $i$f$foo) into multiple contiguous LocalVariable records.
-Merge contiguous or overlapping ranges of the same variable so that enclosing
-inline functions are properly filtered out and inline calls are not split.
+Merge contiguous ranges of the same variable so that enclosing inline functions
+are properly filtered out and inline calls are not split, without absorbing
+nested calls to the same inline function (whose ranges strictly overlap).
 */
 private fun mergeCalls(inlineVariables: List<ScopedVariable>): List<InlineCallInfo> {
   return inlineVariables
     .groupBy { it.variable.name() }
     .values
     .flatMap { varsWithSameName ->
-      val sorted = varsWithSameName.sortedBy { it.scope.start.codeIndex() }
+      val sorted =
+        varsWithSameName.sortedWith(
+          compareBy<ScopedVariable> { it.scope.start.codeIndex() }.thenByDescending { it.scope.endInclusive.codeIndex() }
+        )
       val merged = mutableListOf<InlineCallInfo>()
       sorted.forEach { (variable, scope) ->
-        val last = merged.lastOrNull()
         val start = scope.start.codeIndex()
         val end = scope.endInclusive.codeIndex()
-        if (last != null && start <= last.bciRange.last + 1) {
-          merged[merged.lastIndex] = last.copy(bciRange = last.bciRange.first..maxOf(last.bciRange.last, end))
+        val contiguousIndex = merged.indexOfFirst { start == it.bciRange.last + 1 }
+        if (contiguousIndex >= 0) {
+          val prev = merged[contiguousIndex]
+          merged[contiguousIndex] = prev.copy(bciRange = prev.bciRange.first..maxOf(prev.bciRange.last, end))
         } else {
           merged.add(
             InlineCallInfo(
