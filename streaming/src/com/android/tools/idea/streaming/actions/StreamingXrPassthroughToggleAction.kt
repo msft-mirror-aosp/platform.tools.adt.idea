@@ -50,7 +50,7 @@ class StreamingXrPassthroughToggleAction : ToggleAction(), DumbAware {
     super.update(event)
     val xrController = getXrInputController(event)
     val presentation = event.presentation
-    presentation.isVisible = xrController?.isPassthroughSupported == true && xrController.dimmingLevels.isEmpty()
+    presentation.isVisible = xrController != null && xrController.dimmingLevels.isEmpty()
     presentation.isEnabled = presentation.isVisible && isEnabled(event)
   }
 

@@ -47,7 +47,7 @@ internal class StreamingXrPassthroughAction : DumbAwareAction() {
     super.update(event)
     val presentation = event.presentation
     val xrController = getXrInputController(event)
-    presentation.isVisible = xrController?.isPassthroughSupported == true && xrController.dimmingLevels.isNotEmpty()
+    presentation.isVisible = xrController != null && xrController.dimmingLevels.isNotEmpty()
     presentation.isEnabled = presentation.isVisible && xrController?.passthroughCoefficient != UNKNOWN_PASSTHROUGH_COEFFICIENT
   }
 

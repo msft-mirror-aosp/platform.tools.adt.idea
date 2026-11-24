@@ -320,7 +320,6 @@ class DeviceToolWindowPanelTest {
 
   @Test
   fun testXrToolbarActions() {
-    StudioFlags.DEVICE_MIRRORING_XR_SIMULATED_PASSTHROUGH.overrideForTest(true, testRootDisposable)
     // Move XR buttons to the Running Devices toolbar to check its appearance.
     service<FloatingXrToolbarState>()::floatingXrToolbarEnabled.override(false, testRootDisposable)
     device = agentRule.connectDevice("XR Headset", 34, Dimension(2560, 2558), deviceType = DeviceType.XR_HEADSET)

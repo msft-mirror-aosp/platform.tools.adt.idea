@@ -874,17 +874,13 @@ internal class StreamingToolWindowManager @AnyThread constructor(private val too
   }
 
   private fun showToolWindowName() {
-    if (StudioFlags.RUNNING_DEVICES_HIDE_TOOL_WINDOW_NAME.get()) {
-      toolWindow.decorator.putClientProperty(ToolWindowContentUi.HIDE_ID_LABEL, null)
-      toolWindow.updateContentUi()
-    }
+    toolWindow.decorator.putClientProperty(ToolWindowContentUi.HIDE_ID_LABEL, null)
+    toolWindow.updateContentUi()
   }
 
   private fun hideToolWindowName() {
-    if (StudioFlags.RUNNING_DEVICES_HIDE_TOOL_WINDOW_NAME.get()) {
-      toolWindow.decorator.putClientProperty(ToolWindowContentUi.HIDE_ID_LABEL, "true")
-      toolWindow.updateContentUi()
-    }
+    toolWindow.decorator.putClientProperty(ToolWindowContentUi.HIDE_ID_LABEL, "true")
+    toolWindow.updateContentUi()
   }
 
   @AnyThread

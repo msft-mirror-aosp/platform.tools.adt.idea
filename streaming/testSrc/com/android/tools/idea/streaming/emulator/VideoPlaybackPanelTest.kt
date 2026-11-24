@@ -843,7 +843,6 @@ class VideoPlaybackPanelTest {
 
   @Test
   fun testZOrderRelativeToZoomControlsAndDisplayIndicatorHiding() {
-    StudioFlags.EMBEDDED_EMULATOR_DISPLAY_OFF_INDICATOR.overrideForTest(true, emulatorViewRule.disposable)
     @Suppress("UnstableApiUsage") HeadlessDataManager.fallbackToProductionDataManager(emulatorViewRule.disposable)
     val displayPanel = createGlassesDisplayPanel { FakeEmulator.createDisplayGlassesAvd(it) }
     displayPanel.zoomToolbarVisible = true
@@ -937,7 +936,6 @@ class VideoPlaybackPanelTest {
 
   @Test
   fun testVisibilityLossDuringSliderDrag() {
-    StudioFlags.EMBEDDED_EMULATOR_DISPLAY_OFF_INDICATOR.overrideForTest(true, emulatorViewRule.disposable)
     @Suppress("UnstableApiUsage") HeadlessDataManager.fallbackToProductionDataManager(emulatorViewRule.disposable)
     val displayPanel = createGlassesDisplayPanel { FakeEmulator.createDisplayGlassesAvd(it) }
     displayPanel.zoomToolbarVisible = true

@@ -101,9 +101,6 @@ internal abstract class AbstractXrInputController(
       }
     }
 
-  open val isPassthroughSupported: Boolean
-    get() = true
-
   open val dimmingLevels: FloatArray
     get() = floatArrayOf()
 

@@ -24,7 +24,6 @@ import com.android.emulator.control.Velocity
 import com.android.emulator.control.XrOptions
 import com.android.emulator.control.XrOptions.Environment.forNumber
 import com.android.tools.idea.concurrency.createCoroutineScope
-import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.protobuf.Empty
 import com.android.tools.idea.streaming.actions.HardwareInputStateStorage
 import com.android.tools.idea.streaming.core.getNormalizedScrollAmount
@@ -52,7 +51,7 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 
 /** Orchestrates mouse and keyboard input for XR devices. Keeps track of XR environment and passthrough. Thread safe. */
 internal class EmulatorXrInputController(private val emulator: EmulatorController, hardwareInputStateStorage: HardwareInputStateStorage) :
-  AbstractXrInputController(isHandAndEyeInputSupported(emulator), hardwareInputStateStorage, emulator.deviceId) {
+  AbstractXrInputController(emulator.emulatorConfig.handAndEyeInputSupported, hardwareInputStateStorage, emulator.deviceId) {
 
   private val inputEvent = InputEvent.newBuilder()
   private val rotation = RotationRadian.newBuilder()
@@ -221,9 +220,6 @@ internal class EmulatorXrInputController(private val emulator: EmulatorControlle
   }
 
   companion object {
-    private fun isHandAndEyeInputSupported(emulator: EmulatorController): Boolean =
-      StudioFlags.EMBEDDED_EMULATOR_XR_HAND_AND_EYE_INPUT.get() && emulator.emulatorConfig.handAndEyeInputSupported
-
     fun getInstance(project: Project, emulator: EmulatorController): EmulatorXrInputController =
       project.service<EmulatorXrInputControllerService>().getXrInputController(emulator)
   }

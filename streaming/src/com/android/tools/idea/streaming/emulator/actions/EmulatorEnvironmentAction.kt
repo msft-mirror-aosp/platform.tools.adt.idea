@@ -98,7 +98,7 @@ internal sealed class EmulatorEnvironmentAction :
             "videofile:$pathStr"
           }
         }
-        StudioFlags.EMBEDDED_EMULATOR_360_IMAGE_ENVIRONMENT.get() && is360ImageWithConfirmation(file, project) -> "image360:$pathStr"
+        is360ImageWithConfirmation(file, project) -> "image360:$pathStr"
         else -> "imagefile:$pathStr"
       }
     return Environment.newBuilder().putEnvironment("scene.mode", mode).build()

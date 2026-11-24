@@ -102,7 +102,6 @@ class EmulatorEnvironmentActionTest {
 
   @Before
   fun setUp() {
-    StudioFlags.EMBEDDED_EMULATOR_CAMERA_ENVIRONMENT.overrideForTest(true, testRootDisposable)
     StudioFlags.EMBEDDED_EMULATOR_3D_SCENE_ENVIRONMENT.overrideForTest(true, testRootDisposable)
     StudioFlags.EMBEDDED_EMULATOR_VIDEO_ENVIRONMENT.overrideForTest(true, testRootDisposable)
     StudioFlags.EMBEDDED_EMULATOR_360_VIDEO_ENVIRONMENT.overrideForTest(true, testRootDisposable)
@@ -539,31 +538,7 @@ class EmulatorEnvironmentActionTest {
   }
 
   @Test
-  fun testRecentCustom360Environment_featureFlagOff() {
-    StudioFlags.EMBEDDED_EMULATOR_360_IMAGE_ENVIRONMENT.overrideForTest(false, testRootDisposable)
-    val xml =
-      """
-      <x:xmpmeta xmlns:x="adobe:ns:meta/">
-       <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
-        <rdf:Description rdf:about="" xmlns:GPano="http://ns.google.com/photos/1.0/panorama/" GPano:ProjectionType="equirectangular" />
-       </rdf:RDF>
-      </x:xmpmeta>
-      """
-        .trimIndent()
-    val jpeg = createMockJpegWithXml(xml)
-
-    val action = EmulatorEnvironmentAction.RecentCustom(jpeg)
-    executeAction(action, project = projectRule.project, extra = dataSnapshotProvider)
-
-    val call = emulator.getNextGrpcCall(2.seconds)
-    assertThat(call.methodName).isEqualTo("android.emulation.control.EmulatorController/setEnvironment")
-    assertThat(shortDebugString(call.request))
-      .isEqualTo("environment { key: \"scene.mode\" value: \"imagefile:${jpeg.systemIndependentString}\" }")
-  }
-
-  @Test
   fun testRecentCustom360ImageCandidate_userConfirms() {
-    StudioFlags.EMBEDDED_EMULATOR_360_IMAGE_ENVIRONMENT.overrideForTest(true, testRootDisposable)
     val w = 200
     val h = 100
     val img = BufferedImage(w, h, BufferedImage.TYPE_INT_RGB)
@@ -589,7 +564,6 @@ class EmulatorEnvironmentActionTest {
 
   @Test
   fun testRecentCustom360ImageCandidate_userDeclines() {
-    StudioFlags.EMBEDDED_EMULATOR_360_IMAGE_ENVIRONMENT.overrideForTest(true, testRootDisposable)
     val w = 200
     val h = 100
     val img = BufferedImage(w, h, BufferedImage.TYPE_INT_RGB)
@@ -790,21 +764,6 @@ class EmulatorEnvironmentActionTest {
   }
 
   @Test
-  fun testActionGroupDoesNotIncludeCamerasWhenFlagDisabled() {
-    StudioFlags.EMBEDDED_EMULATOR_CAMERA_ENVIRONMENT.overrideForTest(false, testRootDisposable)
-    val camera1 = Camera.newBuilder().setDisplayName("Camera 1").setId("id1").build()
-    emulator.hostCameras = CameraList.newBuilder().addCameras(camera1).build()
-
-    val group = ActionManager.getInstance().getAction("android.emulator.environments") as EmulatorEnvironmentActionGroup
-    val event = createTestEvent(project = projectRule.project, extra = dataSnapshotProvider)
-    emulatorController
-    val children = group.getChildren(event)
-    val camerasGroup = children[7] as DefaultActionGroup
-
-    assertThat(updateAndGetActionPresentation(camerasGroup, event).isVisible).isFalse()
-  }
-
-  @Test
   fun testBuiltInImageActionPresentationText() {
     val group = ActionManager.getInstance().getAction("android.emulator.environments") as EmulatorEnvironmentActionGroup
     val event = createTestEvent(project = projectRule.project, extra = dataSnapshotProvider)
@@ -818,8 +777,7 @@ class EmulatorEnvironmentActionTest {
   }
 
   @Test
-  fun testCustom360Environment_featureFlagOn() {
-    StudioFlags.EMBEDDED_EMULATOR_360_IMAGE_ENVIRONMENT.overrideForTest(true, testRootDisposable)
+  fun testCustom360Environment() {
     val xml =
       """
       <x:xmpmeta xmlns:x="adobe:ns:meta/">
@@ -845,35 +803,7 @@ class EmulatorEnvironmentActionTest {
   }
 
   @Test
-  fun testCustom360Environment_featureFlagOff() {
-    StudioFlags.EMBEDDED_EMULATOR_360_IMAGE_ENVIRONMENT.overrideForTest(false, testRootDisposable)
-    val xml =
-      """
-      <x:xmpmeta xmlns:x="adobe:ns:meta/">
-       <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
-        <rdf:Description rdf:about="" xmlns:GPano="http://ns.google.com/photos/1.0/panorama/" GPano:ProjectionType="equirectangular" />
-       </rdf:RDF>
-      </x:xmpmeta>
-      """
-        .trimIndent()
-    val jpeg = createMockJpegWithXml(xml)
-
-    val imageFile = mock<VirtualFile>()
-    whenever(imageFile.path).thenReturn(jpeg.toString())
-    testRootDisposable.registerFakeFileChooserFactory(imageFile)
-
-    val action = ActionManager.getInstance().getAction("android.emulator.environment.custom")
-    executeAction(action, project = projectRule.project, extra = dataSnapshotProvider)
-
-    val call = emulator.getNextGrpcCall(2.seconds)
-    assertThat(call.methodName).isEqualTo("android.emulation.control.EmulatorController/setEnvironment")
-    assertThat(shortDebugString(call.request))
-      .isEqualTo("environment { key: \"scene.mode\" value: \"imagefile:${jpeg.systemIndependentString}\" }")
-  }
-
-  @Test
-  fun testRecentCustom360Environment_featureFlagOn() {
-    StudioFlags.EMBEDDED_EMULATOR_360_IMAGE_ENVIRONMENT.overrideForTest(true, testRootDisposable)
+  fun testRecentCustom360Environment() {
     val xml =
       """
       <x:xmpmeta xmlns:x="adobe:ns:meta/">
@@ -922,8 +852,7 @@ class EmulatorEnvironmentActionTest {
   }
 
   @Test
-  fun testCustomPng360Environment_featureFlagOn() {
-    StudioFlags.EMBEDDED_EMULATOR_360_IMAGE_ENVIRONMENT.overrideForTest(true, testRootDisposable)
+  fun testCustomPng360Environment() {
     val xml =
       """
       <x:xmpmeta xmlns:x="adobe:ns:meta/">
@@ -1161,7 +1090,6 @@ class EmulatorEnvironmentActionTest {
 
   @Test
   fun testRecentCustom360ImageCandidate_reusePrevious360Mode_withoutAskingConfirmation() {
-    StudioFlags.EMBEDDED_EMULATOR_360_IMAGE_ENVIRONMENT.overrideForTest(true, testRootDisposable)
     val w = 200
     val h = 100
     val img = BufferedImage(w, h, BufferedImage.TYPE_INT_RGB)
@@ -1194,7 +1122,6 @@ class EmulatorEnvironmentActionTest {
 
   @Test
   fun testRecentCustom360ImageCandidate_reusePreviousFlatMode_withoutAskingConfirmation() {
-    StudioFlags.EMBEDDED_EMULATOR_360_IMAGE_ENVIRONMENT.overrideForTest(true, testRootDisposable)
     val w = 200
     val h = 100
     val img = BufferedImage(w, h, BufferedImage.TYPE_INT_RGB)
@@ -1227,7 +1154,6 @@ class EmulatorEnvironmentActionTest {
 
   @Test
   fun testRecentCustom360ImageCandidate_modifiedFile_asksConfirmation() {
-    StudioFlags.EMBEDDED_EMULATOR_360_IMAGE_ENVIRONMENT.overrideForTest(true, testRootDisposable)
     val w = 200
     val h = 100
     val img = BufferedImage(w, h, BufferedImage.TYPE_INT_RGB)

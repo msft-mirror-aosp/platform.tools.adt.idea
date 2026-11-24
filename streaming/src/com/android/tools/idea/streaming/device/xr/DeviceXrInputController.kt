@@ -16,7 +16,6 @@
 package com.android.tools.idea.streaming.device.xr
 
 import com.android.annotations.concurrency.UiThread
-import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.streaming.actions.HardwareInputStateStorage
 import com.android.tools.idea.streaming.core.RUNNING_DEVICES_NOTIFICATION_GROUP
 import com.android.tools.idea.streaming.core.getNormalizedScrollAmount
@@ -46,9 +45,6 @@ import kotlin.math.min
 /** Orchestrates mouse and keyboard input for XR devices. Keeps track of XR environment and passthrough. Thread safe. */
 internal class DeviceXrInputController(private val deviceClient: DeviceClient, hardwareInputStateStorage: HardwareInputStateStorage) :
   AbstractXrInputController(isHandAndEyeInputSupported = false, hardwareInputStateStorage, deviceClient.deviceId), XrEnvironmentListener {
-
-  override val isPassthroughSupported: Boolean
-    get() = StudioFlags.DEVICE_MIRRORING_XR_SIMULATED_PASSTHROUGH.get()
 
   init {
     Disposer.register(deviceClient, this)

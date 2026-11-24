@@ -127,11 +127,7 @@ internal class EmulatorCameraActionGroup : DefaultActionGroup(), DumbAware, Togg
   override fun update(event: AnActionEvent) {
     val presentation = event.presentation
     val emulator = getEmulatorController(event)
-    val visible =
-      StudioFlags.EMBEDDED_EMULATOR_CAMERA_ENVIRONMENT.get() &&
-        emulator != null &&
-        EmulatorEnvironmentAction.isApplicable(emulator.emulatorConfig) &&
-        emulator.hostCameras.isNotEmpty()
+    val visible = emulator != null && EmulatorEnvironmentAction.isApplicable(emulator.emulatorConfig) && emulator.hostCameras.isNotEmpty()
     val enabled = visible && emulator.connectionState == EmulatorController.ConnectionState.CONNECTED
     presentation.isVisible = visible
     presentation.isEnabled = enabled

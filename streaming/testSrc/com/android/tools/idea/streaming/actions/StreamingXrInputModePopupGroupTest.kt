@@ -17,7 +17,6 @@ package com.android.tools.idea.streaming.actions
 
 import com.android.sdklib.deviceprovisioner.DeviceType
 import com.android.tools.adtui.swing.popup.JBPopupRule
-import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.streaming.DEVICE_TYPE_KEY
 import com.android.tools.idea.streaming.core.FLOATING_TOOLBAR_KEY
 import com.android.tools.idea.streaming.core.FloatingToolbarContainer
@@ -25,7 +24,6 @@ import com.android.tools.idea.streaming.emulator.EMULATOR_CONTROLLER_KEY
 import com.android.tools.idea.streaming.emulator.EmulatorViewRule
 import com.android.tools.idea.streaming.emulator.FakeEmulator
 import com.android.tools.idea.streaming.testutil.newEmulatorView
-import com.android.tools.idea.testing.flags.overrideForTest
 import com.google.common.truth.Truth.assertThat
 import com.intellij.openapi.actionSystem.ActionPlaces
 import com.intellij.openapi.actionSystem.ActionUiKind
@@ -33,7 +31,6 @@ import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.actionSystem.DataContext
 import com.intellij.openapi.actionSystem.impl.SimpleDataContext
-import com.intellij.openapi.util.Disposer
 import com.intellij.testFramework.ApplicationRule
 import com.intellij.testFramework.DisposableRule
 import com.intellij.testFramework.EdtRule
@@ -44,8 +41,6 @@ import java.awt.event.KeyEvent.CHAR_UNDEFINED
 import java.awt.event.KeyEvent.KEY_RELEASED
 import java.awt.event.KeyEvent.VK_E
 import javax.swing.JPanel
-import org.junit.After
-import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 
@@ -59,19 +54,6 @@ class StreamingXrInputModePopupGroupTest {
 
   private val project
     get() = emulatorViewRule.project
-
-  private var testRootDisposable = Disposer.newDisposable()
-
-  @Before
-  fun setUp() {
-    testRootDisposable = Disposer.newDisposable()
-    StudioFlags.EMBEDDED_EMULATOR_XR_HAND_AND_EYE_INPUT.overrideForTest(true, testRootDisposable)
-  }
-
-  @After
-  fun tearDown() {
-    Disposer.dispose(testRootDisposable)
-  }
 
   @Test
   fun testCollapsibleToolbarInteraction() {

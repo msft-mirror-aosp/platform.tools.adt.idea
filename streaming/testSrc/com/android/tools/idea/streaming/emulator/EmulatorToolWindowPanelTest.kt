@@ -202,7 +202,6 @@ class EmulatorToolWindowPanelTest {
 
   @Before
   fun setUp() {
-    StudioFlags.EMBEDDED_EMULATOR_XR_HAND_AND_EYE_INPUT.overrideForTest(true, testRootDisposable)
     StudioFlags.EMBEDDED_EMULATOR_XR_HAND_AND_EYE_CURSORS.overrideForTest(true, testRootDisposable)
     val mockScreenRecordingCache = mock<ScreenRecordingSupportedCache>()
     whenever(mockScreenRecordingCache.isScreenRecordingSupported(any())).thenReturn(true)
@@ -693,7 +692,6 @@ class EmulatorToolWindowPanelTest {
 
   @Test
   fun testDisplayGlassesDisplayOffIndicator() {
-    StudioFlags.EMBEDDED_EMULATOR_DISPLAY_OFF_INDICATOR.overrideForTest(true, testRootDisposable)
     val avdFolder = FakeEmulator.createDisplayGlassesAvd(emulatorRule.avdRoot, androidVersion = AndroidVersion(36, 0))
     panel = createWindowPanel(avdFolder)
 
@@ -730,16 +728,10 @@ class EmulatorToolWindowPanelTest {
     panel.destroyContent()
     assertThat(panel.primaryDisplayView).isNull()
     streamScreenshotCall.waitForCancellation(2.seconds)
-
-    StudioFlags.EMBEDDED_EMULATOR_DISPLAY_OFF_INDICATOR.overrideForTest(false, testRootDisposable)
-    panel.createContent(true)
-    assertThat(fakeUi.findComponent<JBLabel> { it.text == "Display off" }).isNull()
-    panel.destroyContent()
   }
 
   @Test
   fun testAudioGlassesToolbarActions() {
-    StudioFlags.EMBEDDED_EMULATOR_DISPLAY_OFF_INDICATOR.overrideForTest(true, testRootDisposable)
     val avdFolder = FakeEmulator.createAudioGlassesAvd(emulatorRule.avdRoot, androidVersion = AndroidVersion(36, 0))
     panel = createWindowPanel(avdFolder)
 

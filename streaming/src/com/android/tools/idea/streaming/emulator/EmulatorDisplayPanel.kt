@@ -70,7 +70,7 @@ internal class EmulatorDisplayPanel(
       loadingPanel.startLoading() // The stopLoading method is called by EmulatorView after the gRPC connection is established.
     }
 
-    if (deviceType == DeviceType.AI_GLASSES && StudioFlags.EMBEDDED_EMULATOR_DISPLAY_OFF_INDICATOR.get()) {
+    if (deviceType == DeviceType.AI_GLASSES) {
       if (emulator.emulatorConfig.displayWidth > 0 && emulator.emulatorConfig.displayHeight > 0) {
         val popup = DisplayIndicatorPopup("Display off").apply { isVisible = false }
         displayIndicator = popup
@@ -89,17 +89,17 @@ internal class EmulatorDisplayPanel(
         displayIndicatorNeeded = true
         notificationLayerPane.add(popup)
       }
-    }
 
-    if (deviceType == DeviceType.AI_GLASSES && displayId == PRIMARY_DISPLAY_ID && StudioFlags.EMBEDDED_EMULATOR_VIDEO_ENVIRONMENT.get()) {
-      val overlay = VideoPlaybackOverlay(this, emulator)
-      overlay.onPlaybackPanelVisibilityChanged = { visible ->
-        videoPlaybackPanelVisible = visible
-        zoomToolbarCollapsed = visible
-        updateDisplayIndicatorVisibility()
+      if (displayId == PRIMARY_DISPLAY_ID && StudioFlags.EMBEDDED_EMULATOR_VIDEO_ENVIRONMENT.get()) {
+        val overlay = VideoPlaybackOverlay(this, emulator)
+        overlay.onPlaybackPanelVisibilityChanged = { visible ->
+          videoPlaybackPanelVisible = visible
+          zoomToolbarCollapsed = visible
+          updateDisplayIndicatorVisibility()
+        }
+        videoPlaybackOverlay = overlay
+        addOverlayPane(overlay)
       }
-      videoPlaybackOverlay = overlay
-      addOverlayPane(overlay)
     }
 
     emulator.addConnectionStateListener(this)
