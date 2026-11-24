@@ -43,7 +43,7 @@ class ProdAndTestFlagsVerifier(val method: Method, val name: String) {
     // release branches (for beta, RC, stable releases).
     val KNOWN_POSSIBLE_DIVERGENCES =
       mapOf(
-        // INTERNAL in feature_flags.txt: on for the main branch, off for release branches. Tests set it themselves.
+        // PREVIEW in feature_flags.txt: on for the main branch, off for release branches. Tests set it themselves.
         "isLeakCanaryOccurrencesEnabled" to "b/550312588"
       )
   }

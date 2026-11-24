@@ -114,7 +114,7 @@ class LeakCanaryLogcatCommandHandlerTest {
     handler = newHandler()
   }
 
-  /** The occurrences flag is on by default, as in internal builds. */
+  /** The occurrences flag is on by default, as in internal and canary builds. */
   private fun newHandler(occurrencesEnabled: Boolean = true) =
     LeakCanaryLogcatCommandHandler(mockDevice, transportServiceGrpc, mockEventQueue) { occurrencesEnabled }
 
