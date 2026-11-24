@@ -16,11 +16,16 @@
 package com.android.tools.idea.debug
 
 import com.intellij.debugger.BytecodeInspector
+import com.intellij.debugger.actions.JvmSmartStepIntoErrorReporter
+import com.intellij.debugger.actions.JvmSmartStepIntoHandler.SmartStepIntoDetectionStatus
 import com.intellij.debugger.engine.DebugProcessImpl
 import com.intellij.debugger.engine.DebuggerUtils
 import com.intellij.debugger.engine.PositionManagerAsync
 import com.intellij.debugger.impl.DebuggerUtilsEx
+import com.intellij.debugger.statistics.DebuggerStatistics
+import com.intellij.debugger.statistics.Engine
 import com.intellij.openapi.application.readAction
+import com.intellij.openapi.util.registry.Registry
 import com.intellij.psi.util.parentOfType
 import com.sun.jdi.LocalVariable
 import com.sun.jdi.Location
@@ -35,6 +40,7 @@ import kexter.Instruction
 import kexter.InvokeInstruction
 import kexter.LineTableEntry
 import kexter.Opcode
+import org.jetbrains.kotlin.idea.debugger.base.util.safeAllLineLocations
 import org.jetbrains.kotlin.idea.debugger.base.util.safeGetSourcePositionAsync
 import org.jetbrains.kotlin.idea.debugger.base.util.safeMethod
 import org.jetbrains.kotlin.idea.debugger.core.DexBytecodeInspector
@@ -102,18 +108,42 @@ class DexBytecodeInspectorImpl : DexBytecodeInspector, BytecodeInspector {
       (instructions.size == 2 || instructions[1].opcode.isMoveResult())
   }
 
+  @Suppress("UnstableApiUsage")
   override suspend fun filterAlreadyExecutedTargets(
     targets: List<KotlinMethodSmartStepTarget>,
-    @Suppress("UnstableApiUsage") context: SmartStepIntoContext,
+    context: SmartStepIntoContext,
   ): List<KotlinMethodSmartStepTarget> {
-    val (expression, debugProcess, _, lines, location) = context
-    val method = location.safeMethod() ?: return targets
-
-    val dex = DexFinder.findDex(debugProcess, expression, location) ?: return targets
-
-    val filterer = KotlinSmartStepTargetFilterer(targets, debugProcess)
-    val visitation = filterer.visitMethod(debugProcess, method, lines, location, dex)
-    val eliminatedEqualsCalls = visitation.eliminated.filter { it.methodInfo.isEqualsNullCall }
+    val (expression, debugProcess, position, lines, location) = context
+    val visitation =
+      location.safeMethod()?.let { method ->
+        DexFinder.findDex(debugProcess, expression, location)?.let { dex ->
+          KotlinSmartStepTargetFilterer(targets, debugProcess).visitMethod(debugProcess, method, lines, location, dex)
+        }
+      }
+    if (visitation == null) {
+      DebuggerStatistics.logSmartStepIntoTargetsDetection(
+        debugProcess.project,
+        Engine.KOTLIN,
+        SmartStepIntoDetectionStatus.BYTECODE_NOT_AVAILABLE,
+      )
+      return targets
+    }
+    val (eliminatedEqualsCalls, remainingEliminated) = visitation.eliminated.partition { it.methodInfo.isEqualsNullCall }
+    if (remainingEliminated.isNotEmpty()) {
+      if (Registry.`is`("debugger.kotlin.report.smart.step.into.targets.detection.failure")) {
+        val targetStrings = remainingEliminated.map { "Target(name=${it.methodInfo.name}, info=${it.methodInfo})" }
+        JvmSmartStepIntoErrorReporter.report(expression, debugProcess.session, position, "Failed to locate target calls: $targetStrings")
+      }
+      DebuggerStatistics.logSmartStepIntoTargetsDetection(
+        debugProcess.project,
+        Engine.KOTLIN,
+        SmartStepIntoDetectionStatus.TARGETS_MISMATCH,
+      )
+      // We failed to filter out all smart step targets during the traversal of the whole method, so
+      // we can't guarantee the correctness of filtering.
+      return targets
+    }
+    DebuggerStatistics.logSmartStepIntoTargetsDetection(debugProcess.project, Engine.KOTLIN, SmartStepIntoDetectionStatus.SUCCESS)
     return when (eliminatedEqualsCalls.isNotEmpty()) {
       true -> visitation.unvisited - eliminatedEqualsCalls.toSet()
       false -> visitation.unvisited
@@ -154,15 +184,15 @@ private suspend fun KotlinSmartStepTargetFilterer.visitMethod(
   lines: ClosedRange<Int>,
   location: Location,
   dex: Dex,
-): MethodVisitation {
+): MethodVisitation? {
   val debugInfo = method.getDebugInfo()
   if (debugInfo.lineTable.isEmpty()) {
-    return MethodVisitation(unvisited = getUnvisitedTargets(), eliminated = emptyList())
+    return null
   }
 
   val methodBytecode = DexBytecode.fromBytes(method.bytecodes(), debugInfo)
   if (methodBytecode.instructions.isEmpty()) {
-    return MethodVisitation(unvisited = getUnvisitedTargets(), eliminated = emptyList())
+    return null
   }
 
   val lineTableIterator = debugInfo.lineTable.iterator()
@@ -241,7 +271,7 @@ private fun Opcode.isReturn(): Boolean {
 }
 
 private fun Method.getDebugInfo(): DexMethodDebugInfo {
-  val lineTable = allLineLocations().map { LineTableEntry(it.codeIndex().toUInt(), it.lineNumber()) }
+  val lineTable = safeAllLineLocations().map { LineTableEntry(it.codeIndex().toUInt(), it.lineNumber()) }
   return DexMethodDebugInfo(lineTable)
 }
 
