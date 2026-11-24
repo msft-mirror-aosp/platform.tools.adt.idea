@@ -23,6 +23,7 @@ import static com.android.tools.idea.gradle.dsl.parser.apply.ApplyDslElement.APP
 import static com.android.tools.idea.gradle.dsl.parser.ext.ExtDslElement.EXT;
 import static com.intellij.psi.util.PsiTreeUtil.findChildOfType;
 import static com.intellij.psi.util.PsiTreeUtil.getChildOfType;
+import static com.intellij.psi.util.PsiTreeUtil.skipWhitespacesAndCommentsForward;
 import static org.jetbrains.plugins.groovy.lang.lexer.GroovyTokenTypes.mCOLON;
 import static org.jetbrains.plugins.groovy.lang.lexer.GroovyTokenTypes.mCOMMA;
 import static org.jetbrains.plugins.groovy.lang.psi.impl.GroovyPsiElementImpl.findExpressionChild;
@@ -1507,7 +1508,7 @@ public final class GroovyDslUtil {
   }
 
   public static boolean isMethodCall(GrReferenceExpression expression){
-    return expression.getNextSibling() instanceof GrArgumentList;
+    return skipWhitespacesAndCommentsForward(expression) instanceof GrArgumentList;
   }
 
   @Nullable
@@ -1526,7 +1527,7 @@ public final class GroovyDslUtil {
     return null;
   }
 
-  static List<String> transformers = List.of("toInteger", "toString");
+  static List<String> transformers = List.of("toInteger", "toString", "toBoolean", "toBigDecimal");
 
   /**
    * Checking case like libs.versions.version.get().toInteger()

@@ -167,4 +167,54 @@ class VersionCatalogReferenceResolutionTest : GradleFileModelTestCase() {
     assertThat(propertyModel.valueType).isEqualTo(GradlePropertyModel.ValueType.INTERPOLATED)
     assertThat(propertyModel.toString()).isEqualTo("android-34")
   }
+
+  @Test
+  @Throws(Exception::class)
+  fun testResolveMultilineCatalogReferenceInAssignmentInt() {
+    writeToVersionCatalogFile(
+      """
+      [versions]
+      compileSdk = "36"
+      """
+        .trimIndent()
+    )
+    writeToBuildFile(
+      if (isGroovy) {
+        """
+        android {
+          compileSdk =
+              libs.versions.compileSdk
+                  .get /* inline comment */ ()
+                  // line comment
+                  .toInteger()
+        }
+        """
+          .trimIndent()
+      } else {
+        """
+        android {
+          compileSdk =
+              libs.versions.compileSdk
+                  .get()
+                  /* block comment */
+                  .toInt()
+        }
+        """
+          .trimIndent()
+      }
+    )
+
+    val expectedReferenceText =
+      if (isGroovy) "libs.versions.compileSdk.get().toInteger()" else "libs.versions.compileSdk.get().toInt()"
+
+    val android = getGradleBuildModel().android()
+    assertNotNull(android)
+    val propertyModel = android.compileSdkVersion()
+    assertThat(propertyModel).isNotNull()
+    assertThat(propertyModel.valueType).isEqualTo(GradlePropertyModel.ValueType.INTEGER)
+    assertThat(propertyModel.toInt()).isEqualTo(36)
+    assertThat(propertyModel.getRawValue(GradlePropertyModel.OBJECT_TYPE)?.toString()).isEqualTo(expectedReferenceText)
+    assertThat(propertyModel.unresolvedModel.valueType).isEqualTo(GradlePropertyModel.ValueType.REFERENCE)
+    assertThat(propertyModel.unresolvedModel.getValue(GradlePropertyModel.STRING_TYPE)).isEqualTo(expectedReferenceText)
+  }
 }

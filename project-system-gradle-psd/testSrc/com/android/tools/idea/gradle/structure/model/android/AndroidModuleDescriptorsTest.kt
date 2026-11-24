@@ -582,4 +582,80 @@ class AndroidModuleDescriptorsTest {
       assertTrue("Should have correct betaVersion:\n$buildFileText", buildFileText.contains("betaVersion = 2"))
     }
   }
+
+  @Test
+  fun testGetMultilineCatalogCompileSdkVersionKts() {
+    val latestAgpCompileSdk = AgpVersionSoftwareEnvironmentDescriptor.AGP_LATEST.compileSdk
+    val preparedProject =
+      projectRule.prepareTestProject(
+        AndroidCoreTestProject.PSD_SAMPLE_KOTLIN.withAdditionalPatch { root ->
+          root.resolve("gradle").mkdirs()
+          root.resolve("gradle/libs.versions.toml").writeText("[versions]\ncompileSdk = \"$latestAgpCompileSdk\"\n")
+          root
+            .resolve("app/build.gradle.kts")
+            .replaceCompileSdk(
+              """
+              compileSdk =
+                      libs.versions.compileSdk
+                          .get()
+                          .toInt()
+              """
+                .trimIndent()
+            )
+        }
+      )
+    preparedProject.open(updateOptions = OpenPreparedProjectOptions::withoutKtsRelatedIndexing) { resolvedProject ->
+      val project = PsProjectImpl(resolvedProject).also { it.testResolve() }
+      val appModule = project.findModuleByName("app") as PsAndroidModule
+
+      val compileSdkVersion = AndroidModuleDescriptors.compileSdkVersion.bind(appModule).getValue()
+      assertThat(
+        compileSdkVersion.parsedValue.value,
+        equalTo<ParsedValue<String>>(
+          ParsedValue.Set.Parsed(
+            value = latestAgpCompileSdk,
+            dslText = DslText.Reference("libs.versions.compileSdk.get().toInt()"),
+          )
+        ),
+      )
+    }
+  }
+
+  @Test
+  fun testGetMultilineCatalogCompileSdkVersionGroovy() {
+    val latestAgpCompileSdk = AgpVersionSoftwareEnvironmentDescriptor.AGP_LATEST.compileSdk
+    val preparedProject =
+      projectRule.prepareTestProject(
+        AndroidCoreTestProject.PSD_SAMPLE_GROOVY.withAdditionalPatch { root ->
+          root.resolve("gradle").mkdirs()
+          root.resolve("gradle/libs.versions.toml").writeText("[versions]\ncompileSdk = \"$latestAgpCompileSdk\"\n")
+          root
+            .resolve("app/build.gradle")
+            .replaceCompileSdk(
+              """
+              compileSdk =
+                      libs.versions.compileSdk
+                          .get()
+                          .toInteger()
+              """
+                .trimIndent()
+            )
+        }
+      )
+    preparedProject.open(updateOptions = OpenPreparedProjectOptions::withoutKtsRelatedIndexing) { resolvedProject ->
+      val project = PsProjectImpl(resolvedProject).also { it.testResolve() }
+      val appModule = project.findModuleByName("app") as PsAndroidModule
+
+      val compileSdkVersion = AndroidModuleDescriptors.compileSdkVersion.bind(appModule).getValue()
+      assertThat(
+        compileSdkVersion.parsedValue.value,
+        equalTo<ParsedValue<String>>(
+          ParsedValue.Set.Parsed(
+            value = latestAgpCompileSdk,
+            dslText = DslText.Reference("libs.versions.compileSdk.get().toInteger()"),
+          )
+        ),
+      )
+    }
+  }
 }

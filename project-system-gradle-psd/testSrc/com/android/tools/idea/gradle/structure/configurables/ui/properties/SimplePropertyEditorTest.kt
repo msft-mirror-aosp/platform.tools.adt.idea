@@ -31,6 +31,7 @@ import com.android.tools.idea.gradle.structure.model.meta.annotated
 import com.google.common.util.concurrent.Futures.immediateFuture
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.SettableFuture
+import com.intellij.openapi.util.Disposer
 import com.intellij.testFramework.TestApplicationManager
 import com.intellij.testFramework.UsefulTestCase
 import com.intellij.ui.components.JBTextField
@@ -454,6 +455,37 @@ class SimplePropertyEditorTest : UsefulTestCase() {
       clone.getModel().getItems(),
       hasItems("1".asAnnotatedParsed(), "2".asAnnotatedParsed(), var1.asAnnotatedParsed(), var2.asAnnotatedParsed()),
     )
+  }
+
+  fun testCatalogReferenceRenderingAndNoOpUpdate() {
+    val catalogRef = ParsedValue.Set.Parsed("1", DslText.Reference("libs.versions.compileSdk.get().toInt()")).annotated()
+    parsedModel.value = catalogRef
+    resolvedModel.value = "1"
+    val editor = SimplePropertyEditor(property.bind(model), property.bindContext(model), null, listOf())
+    Disposer.register(testRootDisposable, editor)
+
+    assertThat(editor.testWatermark(), equalTo("\$libs.versions.compileSdk.get().toInt() : 1 (one)"))
+    assertThat(
+      (editor.testRenderedComboBox.editor.editorComponent as JTextComponent).text,
+      equalTo("\$libs.versions.compileSdk.get().toInt()"),
+    )
+    assertThat(editor.testPlainTextStatus, equalTo(""))
+
+    // Focusing and blurring without user edits must not dirty or overwrite the property.
+    assertThat(editor.updateProperty(), equalTo(UpdatePropertyOutcome.NOT_CHANGED))
+    assertThat(parsedModel.setParsedValueCalls, equalTo(0))
+
+    // Editing to a new known value updates the model cleanly.
+    editor.commitTestText("2")
+    assertThat(parsedModel.setParsedValueCalls, equalTo(1))
+    assertThat(parsedModel.value, equalTo("2".asAnnotatedParsed()))
+
+    // Focusing and blurring an unparsed multiline expression without user edits must also be a no-op.
+    parsedModel.value = ParsedValue.Set.Parsed<String>(null, DslText.OtherUnparsedDslText("run {\n  36\n}")).annotated()
+    resolvedModel.value = null
+    editor.reload()
+    assertThat(editor.updateProperty(), equalTo(UpdatePropertyOutcome.NOT_CHANGED))
+    assertThat(parsedModel.setParsedValueCalls, equalTo(1))
   }
 }
 

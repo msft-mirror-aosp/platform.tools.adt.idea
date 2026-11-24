@@ -18,7 +18,11 @@ package com.android.tools.idea.gradle.dsl.parser.elements
 import com.android.tools.idea.gradle.dsl.api.ext.GradlePropertyModel
 import com.android.tools.idea.gradle.dsl.parser.GradleDslParser.DataType
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.psi.PsiComment
 import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiWhiteSpace
+import com.intellij.psi.SyntaxTraverser
+import com.intellij.util.containers.TreeTraversal
 
 class GradleDslReferenceExpression(
   parent: GradleDslElement,
@@ -35,6 +39,17 @@ class GradleDslReferenceExpression(
       DataType.INTEGER -> GradlePropertyModel.ValueType.INTEGER
       DataType.BOOLEAN -> GradlePropertyModel.ValueType.BOOLEAN
       else -> null
+    }
+  }
+
+  override fun getReferenceText(): String? {
+    if (!isReference && !isInterpolated) return null
+    val element = currentElement ?: return null
+    return ApplicationManager.getApplication().runReadAction<String> {
+      SyntaxTraverser.psiTraverser(element)
+        .traverse(TreeTraversal.LEAVES_DFS)
+        .filter { it !is PsiWhiteSpace && it !is PsiComment && it.text.isNotBlank() }
+        .joinToString("") { it.text }
     }
   }
 }

@@ -127,7 +127,8 @@ public class SdkOrPreviewTransform extends PropertyTransform {
       }
     } else { // RawText, literal Strings not beginning "android-"
       // Handle RawText that refers to an integer
-      if (value.toString().endsWith(".toInt()")) {
+      String stringValue = value.toString();
+      if (stringValue.endsWith(".toInt()") || stringValue.endsWith(".toInteger()")) {
         operatorName = sdkSetter;
         syntax = writer.getSyntaxForSdkSetter();
       } else {

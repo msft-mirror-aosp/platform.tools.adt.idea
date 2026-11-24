@@ -59,6 +59,7 @@ import javax.swing.JLabel
 import javax.swing.JPanel
 import javax.swing.KeyStroke
 import javax.swing.table.TableCellEditor
+import javax.swing.text.JTextComponent
 
 /**
  * A property editor [ModelPropertyEditor] for properties of simple (not complex) types.
@@ -217,7 +218,11 @@ class SimplePropertyEditor<PropertyT : Any, ModelPropertyT : ModelPropertyCore<P
        *
        * (Returns [false] if the editor has not yet been initialized).
        */
-      fun isEditorChanged() = lastValueSet != null && getValue().value != lastValueSet?.value
+      fun isEditorChanged(): Boolean {
+        val last = lastValueSet ?: return false
+        if (selectedItem == last && (editor.editorComponent as? JTextComponent)?.text == toEditorText(last).replace('\n', ' ')) return false
+        return getValue().value != last.value
+      }
 
       private var delayedActionPending = false
 
