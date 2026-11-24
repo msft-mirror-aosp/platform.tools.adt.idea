@@ -22,10 +22,8 @@ import com.google.idea.blaze.base.model.BlazeProjectData;
 import com.google.idea.blaze.base.model.primitives.LanguageClass;
 import com.google.idea.blaze.base.qsync.QuerySyncManager;
 import com.google.idea.blaze.base.qsync.action.AddToProjectAction;
-import com.google.idea.blaze.base.scope.BlazeContext;
 import com.google.idea.blaze.base.settings.Bazel;
 import com.google.idea.blaze.base.settings.Blaze;
-import com.google.idea.blaze.base.settings.BlazeImportSettings;
 import com.google.idea.blaze.base.settings.BlazeUserSettings;
 import com.google.idea.blaze.base.settings.ui.BlazeUserSettingsCompositeConfigurable;
 import com.google.idea.blaze.base.settings.ui.BlazeUserSettingsConfigurable;
@@ -92,7 +90,8 @@ public class ExternalFileProjectManagementHelper
   /** Whether the editor notification should be shown for this file type. */
   private static boolean supportedFileType(File file) {
     LanguageClass language =
-        LanguageClass.fromExtension(FileUtilRt.getExtension(file.getName()).toLowerCase(Locale.ROOT));
+        LanguageClass.fromExtension(
+            FileUtilRt.getExtension(file.getName()).toLowerCase(Locale.ROOT));
     if (language != null && !LanguageSupport.languagesSupportedByCurrentIde().contains(language)) {
       return false;
     }
@@ -196,7 +195,6 @@ public class ExternalFileProjectManagementHelper
     @Override
     public void onSyncComplete(
         Project project,
-        BlazeContext context,
         ImmutableSet<Integer> buildIds,
         BlazeProjectData blazeProjectData,
         SyncMode syncMode,

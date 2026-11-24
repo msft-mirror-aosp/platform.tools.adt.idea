@@ -29,7 +29,6 @@ public interface SyncListener {
   /** Called on successful (or partially successful) completion of a sync */
   default void onSyncComplete(
       Project project,
-      BlazeContext context,
       ImmutableSet<Integer> buildIds,
       BlazeProjectData blazeProjectData,
       SyncMode syncMode,

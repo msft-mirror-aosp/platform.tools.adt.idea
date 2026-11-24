@@ -25,7 +25,6 @@ import com.google.idea.blaze.base.projectview.ProjectViewSet;
 import com.google.idea.blaze.base.projectview.section.sections.RunConfigurationsSection;
 import com.google.idea.blaze.base.projectview.section.sections.TargetSection;
 import com.google.idea.blaze.base.run.exporter.RunConfigurationSerializer;
-import com.google.idea.blaze.base.scope.BlazeContext;
 import com.google.idea.blaze.base.sync.SyncListener;
 import com.google.idea.blaze.base.sync.SyncMode;
 import com.google.idea.blaze.base.sync.SyncResult;
@@ -55,7 +54,6 @@ public class BlazeRunConfigurationSyncListener implements SyncListener {
   @Override
   public void onSyncComplete(
       Project project,
-      BlazeContext context,
       ImmutableSet<Integer> buildIds,
       BlazeProjectData blazeProjectData,
       SyncMode syncMode,
@@ -88,7 +86,6 @@ public class BlazeRunConfigurationSyncListener implements SyncListener {
           }
         });
   }
-
 
   /**
    * On each sync, re-calculate target kind for all existing run configurations, in case the target

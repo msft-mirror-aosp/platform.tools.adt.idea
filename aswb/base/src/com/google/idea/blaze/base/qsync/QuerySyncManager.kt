@@ -561,7 +561,6 @@ constructor(private val project: Project, private val coroutineScope: CoroutineS
             // A callback shared between the old and query sync implementations.
             syncListener.onSyncComplete(
               project,
-              context,
               ImmutableSet.of(),
               querySyncProject.projectData,
               SyncMode.FULL,

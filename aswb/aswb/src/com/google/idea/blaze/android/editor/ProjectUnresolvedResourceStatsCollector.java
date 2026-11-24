@@ -25,7 +25,6 @@ import com.google.idea.blaze.base.logging.utils.FileHighlights;
 import com.google.idea.blaze.base.logging.utils.HighlightInfo;
 import com.google.idea.blaze.base.model.BlazeProjectData;
 import com.google.idea.blaze.base.model.primitives.WorkspacePath;
-import com.google.idea.blaze.base.scope.BlazeContext;
 import com.google.idea.blaze.base.sync.SyncListener;
 import com.google.idea.blaze.base.sync.SyncMode;
 import com.google.idea.blaze.base.sync.SyncResult;
@@ -276,7 +275,6 @@ class ProjectUnresolvedResourceStatsCollector implements Disposable {
     @Override
     public void onSyncComplete(
         Project project,
-        BlazeContext context,
         ImmutableSet<Integer> buildIds,
         BlazeProjectData blazeProjectData,
         SyncMode syncMode,
