@@ -16,7 +16,7 @@
 
 #include "io_exception.h"
 
-#include <cerrno>
+#include <cstring>
 
 namespace screensharing {
 
@@ -27,7 +27,7 @@ IoException::IoException(int error_code)
 }
 
 IoException::IoException(const char* message)
-    : error_code_(errno),
+    : error_code_(0),
       message_(message) {
 }
 

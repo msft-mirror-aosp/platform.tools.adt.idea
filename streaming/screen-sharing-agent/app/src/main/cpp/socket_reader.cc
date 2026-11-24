@@ -17,12 +17,12 @@
 #include "socket_reader.h"
 
 #include <poll.h>
-#include <sys/uio.h>
 #include <unistd.h>
 
 #include <cassert>
 #include <cerrno>
 #include <chrono>
+#include <optional>
 
 namespace screensharing {
 
@@ -42,41 +42,51 @@ SocketReader::SocketReader(SocketReader&& other)
 }
 
 SocketReader::Result SocketReader::Read(void* buf, size_t size) {
-  auto deadline = steady_clock::now() + milliseconds(timeout_millis_);
+  if (size == 0) {
+    return Result(Status::IO_ERROR, EINVAL);
+  }
+  optional<steady_clock::time_point> deadline;
+  if (timeout_millis_ >= 0) {
+    deadline = steady_clock::now() + milliseconds(timeout_millis_);
+  }
   while (true) {
     ssize_t bytes_read = TEMP_FAILURE_RETRY(read(socket_fd_, buf, size));
-    if (bytes_read <= 0) {
+    if (bytes_read == 0) {
+      return Result(Status::DISCONNECTED);
+    }
+    if (bytes_read < 0) {
       switch (errno) {
-        case 0:
         case EBADF:
+        case ECONNRESET:
         case EPIPE:
         case ENOENT:
-          return Result(Status::DISCONNECTED);
+          return Result(Status::DISCONNECTED, errno);
 
         case EAGAIN: {
-          auto remaining_time_millis = duration_cast<milliseconds>(deadline - steady_clock::now()).count();
-          if (remaining_time_millis <= 0) {
-            return Result(Status::TIMEOUT);
+          int poll_timeout_millis = -1;
+          if (deadline.has_value()) {
+            auto remaining_time_millis = ceil<milliseconds>(*deadline - steady_clock::now()).count();
+            if (remaining_time_millis <= 0) {
+              return Result(Status::TIMEOUT);
+            }
+            poll_timeout_millis = static_cast<int>(remaining_time_millis);
           }
           struct pollfd fds = {socket_fd_, POLLIN, 0};
-          int ret = poll(&fds, 1, remaining_time_millis);
+          int ret = poll(&fds, 1, poll_timeout_millis);
           if (ret == 0) {
             return Result(Status::TIMEOUT);
           }
           if (ret < 0 && errno != EINTR) {
-            return Result(Status::DISCONNECTED);
-          }
-          if (steady_clock::now() >= deadline) {
-            return Result(Status::TIMEOUT);
+            return Result(Status::IO_ERROR, errno);
           }
           continue;
         }
 
         default:
-          return Result(Status::IO_ERROR);
+          return Result(Status::IO_ERROR, errno);
       }
     }
-    return Result(Status::SUCCESS, static_cast<size_t>(bytes_read));
+    return Result(Status::SUCCESS, 0, static_cast<size_t>(bytes_read));
   }
 }
 

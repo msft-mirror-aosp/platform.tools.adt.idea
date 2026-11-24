@@ -17,7 +17,7 @@
 #pragma once
 
 #include <cstddef>
-#include <string>
+#include <cstdint>
 
 #include "common.h"
 
@@ -28,22 +28,25 @@ public:
   enum class Status { SUCCESS, TIMEOUT, IO_ERROR, DISCONNECTED };
 
   struct Result {
-    explicit Result(Status status, size_t bytes_read = 0)
+    explicit Result(Status status, int error_code = 0, size_t bytes_read = 0)
         : status(status),
-          error_code(status == Status::SUCCESS ? 0 : errno),
+          error_code(error_code),
           bytes_read(bytes_read) {
     }
 
     Status status;
-    int error_code;  // Contains the value of errno if status != Status::SUCCESS.
+    int error_code;  // Contains the errno value if caused by an error, otherwise 0.
     size_t bytes_read; // Guaranteed to be positive if status == Status::SUCCESS.
   };
 
   static constexpr int32_t INFINITE_TIMEOUT = -1;
 
+  // Constructs a SocketReader for the given non-blocking socket_fd.
+  // INFINITE_TIMEOUT or any other negative number means no timeout.
   SocketReader(int socket_fd, int32_t timeout_millis = INFINITE_TIMEOUT);
   SocketReader(SocketReader&& other);
 
+  // Reads up to size bytes into buf. The size parameter must be positive.
   Result Read(void* buf, size_t size);
 
   int socket_fd() const { return socket_fd_; }

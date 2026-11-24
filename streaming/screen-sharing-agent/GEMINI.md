@@ -37,6 +37,13 @@ The project uses Gradle with CMake for native compilation.
 
 This will build the APK and the underlying shared library.
 
+In the `studio-main` repository, the agent bundle and C++ unit tests (on Linux) can also be built and run with Bazel:
+
+```bash
+bazel build //tools/adt/idea/streaming/screen-sharing-agent:bundle
+bazel test //tools/adt/idea/streaming/screen-sharing-agent/...
+```
+
 ### Execution Model
 
 This agent is typically not installed as a regular user app but pushed to the device (e.g., to `/data/local/tmp/`) and executed directly via shell commands from Android Studio.

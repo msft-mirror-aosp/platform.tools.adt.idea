@@ -16,14 +16,15 @@
 
 #pragma once
 
+#include <exception>
 #include <string>
 
 namespace screensharing {
 
 class IoException : public std::exception {
 public:
-  IoException(int error_code = errno);
-  IoException(const char* message);
+  explicit IoException(int error_code);
+  explicit IoException(const char* message);
 
   virtual std::string GetMessage() const;
 
@@ -33,9 +34,13 @@ private:
 };
 
 class IoTimeout : public IoException {
+public:
+  IoTimeout() : IoException("Timed out") {}
 };
 
 class EndOfFile : public IoException {
+public:
+  EndOfFile() : IoException("End of file") {}
 };
 
 }  // namespace screensharing

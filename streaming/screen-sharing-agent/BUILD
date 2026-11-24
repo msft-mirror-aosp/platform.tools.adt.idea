@@ -1,5 +1,5 @@
 load("@rules_android//rules:rules.bzl", "android_library")
-load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
+load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library", "cc_test")
 load("//tools/adt/idea/studio:studio.bzl", "studio_data")
 load("//tools/base/bazel:android.bzl", "ANDROID_COPTS", "ANDROID_LINKOPTS", "android_cc_binary", "dex_library")
 
@@ -81,4 +81,23 @@ studio_data(
         "tools/adt/idea/streaming/screen-sharing-agent/": "screen-sharing-agent/",
     },
     visibility = ["//visibility:public"],
+)
+
+cc_test(
+    name = "socket_reader_test",
+    size = "small",
+    srcs = [
+        "app/src/main/cpp/common.h",
+        "app/src/main/cpp/socket_reader.cc",
+        "app/src/main/cpp/socket_reader.h",
+        "app/src/test/cpp/socket_reader_test.cc",
+    ],
+    includes = [
+        "app/src/main/cpp",
+    ],
+    linkstatic = True,
+    target_compatible_with = ["@platforms//os:linux"],
+    deps = [
+        "@googletest//:gtest_main",
+    ],
 )
