@@ -165,7 +165,7 @@ private constructor(
     return GradleSourceSetModuleClassFileFinder(module, compileRootsScope)
   }
 
-  private val dependencyCompatibility = GradleDependencyCompatibilityAnalyzer(this, projectBuildModelHandler)
+  private fun createDependencyCompatibilityAnalyzer() = GradleDependencyCompatibilityAnalyzer(this, projectBuildModelHandler)
 
   override fun hasResolvedDependency(id: WellKnownMavenArtifactId, scope: DependencyScopeType): Boolean =
     getResolvedDependency(id.getModule(), scope) != null
@@ -365,7 +365,7 @@ private constructor(
   override fun analyzeDependencyCompatibility(
     dependencies: List<GradleRegisteredDependencyId>
   ): ListenableFuture<RegisteredDependencyCompatibilityResult<GradleRegisteredDependencyId>> {
-    return dependencyCompatibility.analyzeDependencyCompatibility(dependencies.map { it.dependency }).transform(
+    return createDependencyCompatibilityAnalyzer().analyzeDependencyCompatibility(dependencies.map { it.dependency }).transform(
       MoreExecutors.directExecutor()
     ) { result ->
       RegisteredDependencyCompatibilityResult(
@@ -380,13 +380,15 @@ private constructor(
 
   @JvmName("analyzeGradleDependencyCompatibility")
   fun analyzeDependencyCompatibility(dependencies: List<Dependency>): ListenableFuture<DependencyCompatibilityResult<Dependency>> {
-    return dependencyCompatibility.analyzeDependencyCompatibility(dependencies).transform(MoreExecutors.directExecutor()) { result ->
+    return createDependencyCompatibilityAnalyzer().analyzeDependencyCompatibility(dependencies).transform(MoreExecutors.directExecutor()) {
+      result ->
       DependencyCompatibilityResult(compatible = result.first, incompatible = result.second, warning = result.third)
     }
   }
 
   fun analyzeComponentCompatibility(components: List<Component>): ListenableFuture<DependencyCompatibilityResult<Component>> {
-    return dependencyCompatibility.analyzeComponentCompatibility(components).transform(MoreExecutors.directExecutor()) { result ->
+    return createDependencyCompatibilityAnalyzer().analyzeComponentCompatibility(components).transform(MoreExecutors.directExecutor()) {
+      result ->
       DependencyCompatibilityResult(compatible = result.first, incompatible = result.second, warning = result.third)
     }
   }

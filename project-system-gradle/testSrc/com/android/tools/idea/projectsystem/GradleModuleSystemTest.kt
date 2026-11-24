@@ -16,17 +16,20 @@
 package com.android.tools.idea.projectsystem
 
 import com.android.SdkConstants
+import com.android.ide.common.gradle.Dependency
 import com.android.ide.common.repository.GoogleMavenArtifactId
 import com.android.tools.idea.gradle.dependencies.GradleDependencyManager
 import com.android.tools.idea.gradle.model.IdeAndroidProject
 import com.android.tools.idea.gradle.project.model.GradleAndroidModel
 import com.android.tools.idea.project.DefaultModuleSystem
+import com.android.tools.idea.projectsystem.gradle.GradleDependencyCompatibilityAnalyzer
 import com.android.tools.idea.projectsystem.gradle.GradleModuleSystem
 import com.android.tools.idea.projectsystem.gradle.ProjectBuildModelHandler
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.testing.IdeComponents
 import com.android.tools.idea.testing.onEdt
 import com.google.common.truth.Truth.assertThat
+import com.google.common.util.concurrent.Futures
 import com.intellij.testFramework.RunsInEdt
 import org.jetbrains.android.AndroidTestBase
 import org.junit.After
@@ -35,6 +38,8 @@ import org.junit.Rule
 import org.junit.Test
 import org.mockito.Mockito
 import org.mockito.Mockito.times
+import org.mockito.kotlin.any
+import org.mockito.kotlin.whenever
 
 /**
  * These unit tests use a local test maven repo "project-system-gradle/testData/repoIndex". To see what dependencies are available to test
@@ -164,5 +169,22 @@ class GradleModuleSystemTest {
   fun testGetPackageName_noOverrides() {
     val packageName = (projectRule.module.getModuleSystem() as DefaultModuleSystem).getPackageName()
     assertThat(packageName).isEqualTo("p1.p2")
+  }
+
+  @Test
+  fun testInitDoesNotCreateDependencyCompatibilityAnalyzer() {
+    Mockito.mockConstruction(GradleDependencyCompatibilityAnalyzer::class.java) { mock, _ ->
+        whenever(mock.analyzeDependencyCompatibility(any())).thenReturn(Futures.immediateFuture(Triple(emptyMap(), emptyList(), "")))
+      }
+      .use { constructed ->
+        val moduleSystem = GradleModuleSystem(projectRule.module, ProjectBuildModelHandler(project), moduleHierarchyProviderStub)
+        assertThat(constructed.constructed()).isEmpty()
+
+        moduleSystem.analyzeDependencyCompatibility(emptyList<Dependency>()).get()
+        assertThat(constructed.constructed()).hasSize(1)
+
+        moduleSystem.analyzeDependencyCompatibility(emptyList<Dependency>()).get()
+        assertThat(constructed.constructed()).hasSize(2)
+      }
   }
 }
