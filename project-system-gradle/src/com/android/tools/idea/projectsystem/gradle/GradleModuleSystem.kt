@@ -35,7 +35,7 @@ import com.android.tools.idea.gradle.model.IdeDeclaredDependencies
 import com.android.tools.idea.gradle.model.IdeDependencies
 import com.android.tools.idea.gradle.model.IdeJavaLibrary
 import com.android.tools.idea.gradle.model.IdeModuleLibrary
-import com.android.tools.idea.gradle.project.entities.getGradleAndroidModelForHolder
+import com.android.tools.idea.gradle.project.entities.getGradleAndroidModel
 import com.android.tools.idea.gradle.project.model.GradleAndroidDependencyModel
 import com.android.tools.idea.gradle.project.model.GradleAndroidModel
 import com.android.tools.idea.gradle.project.model.gradleModuleModel
@@ -131,12 +131,8 @@ private constructor(
     moduleHierarchyProvider: ModuleHierarchyProvider,
   ) : this(module, projectBuildModelHandler, moduleHierarchyProvider, module.getHolderModule())
 
-  override val androidModel: GradleAndroidModel? =
-    if (module.isLinkedAndroidModule()) {
-      module.project.workspaceModel.currentSnapshot.getGradleAndroidModelForHolder(holderModule)
-    } else {
-      null
-    }
+  override val androidModel: GradleAndroidModel?
+    get() = module.project.workspaceModel.currentSnapshot.getGradleAndroidModel(module)
 
   override val type: Type
     get() =
