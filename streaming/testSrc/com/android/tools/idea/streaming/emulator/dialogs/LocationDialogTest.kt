@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.streaming.emulator.dialogs
 
+import com.android.emulator.control.GpsState
 import com.android.testutils.waitForCondition
 import com.android.tools.adtui.swing.FakeUi
 import com.android.tools.adtui.swing.HeadlessDialogRule
@@ -57,6 +58,7 @@ import javax.swing.JComponent
 import javax.swing.JLabel
 import javax.swing.JPanel
 import javax.swing.JSlider
+import javax.swing.LayoutFocusTraversalPolicy
 import javax.swing.UIManager
 import kotlin.io.path.writeText
 import kotlin.math.abs
@@ -126,7 +128,12 @@ class LocationDialogTest {
     fakeEmulator.pauseGrpc()
     val locationDialog = LocationDialog(emulatorController)
     val dialogWrapper = locationDialog.show(projectRule.project)
-    val ui = FakeUi(dialogWrapper.rootPane)
+    val rootPane =
+      dialogWrapper.rootPane.apply {
+        isFocusCycleRoot = true
+        focusTraversalPolicy = LayoutFocusTraversalPolicy()
+      }
+    val ui = FakeUi(rootPane, dialogWrapper.disposable)
     ui.layoutAndDispatchEvents()
 
     val routesTable = ui.getComponent<TableView<SavedRouteItem>> { it.name == "savedRoutesTable" }
@@ -136,11 +143,16 @@ class LocationDialogTest {
     val playPauseButton = ui.getComponent<JButton> { it.name == "playPauseButton" }
     val repeatCheckBox = ui.getComponent<JBCheckBox> { it.name == "repeatPlaybackCheckBox" }
     val speedComboBox = ui.getComponent<ComboBox<*>> { it.name == "playbackSpeedComboBox" }
+    val gpsSignalCheckBox = ui.getComponent<JBCheckBox> { it.name == "gpsSignalCheckBox" }
+    assertThat(gpsSignalCheckBox.text).isEqualTo("GPS signal")
     val speedItems = (0 until speedComboBox.itemCount).map { speedComboBox.getItemAt(it).toString() }
     assertThat(speedItems).containsExactly("1X", "2X", "5X", "10X", "20X", "50X", "100X").inOrder()
 
     // Map is positioned to the right of the saved routes table, matching SensorReplayDialog's master-detail layout.
     assertThat(ui.getPosition(routesTable).x).isLessThan(ui.getPosition(routesMap).x)
+    assertThat(ui.getPosition(gpsSignalCheckBox).x).isLessThan(ui.getPosition(playPauseButton).x)
+    assertThat(ui.getPosition(speedComboBox).x).isLessThan(ui.getPosition(repeatCheckBox).x)
+    assertThat(ui.getPosition(gpsSignalCheckBox).y).isEqualTo(ui.getPosition(repeatCheckBox).y)
     assertThat(routesMap.cursor).isNotEqualTo(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR))
     assertThat(routesMap.cursor).isNotEqualTo(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR))
     assertThat(routesMap.zoomOutButton.cursor).isEqualTo(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR))
@@ -159,6 +171,8 @@ class LocationDialogTest {
     // Playback and seeking stay disabled until initial GPS arrives, while saved route selection & map remain usable.
     assertThat(playPauseButton.isEnabled).isFalse()
     assertThat(slider.isEnabled).isFalse()
+    assertThat(gpsSignalCheckBox.isEnabled).isFalse()
+    assertThat(gpsSignalCheckBox.isSelected).isTrue()
     assertThat(repeatCheckBox.isEnabled).isTrue()
     assertThat(speedComboBox.isEnabled).isTrue()
     assertThat(routesMap.routePoints).hasSize(2)
@@ -167,6 +181,18 @@ class LocationDialogTest {
     fakeEmulator.resumeGrpc()
     waitForCondition(5.seconds) { playPauseButton.isEnabled }
     assertThat(slider.isEnabled).isTrue()
+    assertThat(gpsSignalCheckBox.isEnabled).isTrue()
+    assertThat(gpsSignalCheckBox.isSelected).isTrue()
+
+    val closeButton = ui.getComponent<JButton> { it.text == "Close" }
+    val focusPolicy = rootPane.focusTraversalPolicy
+    assertThat(focusPolicy.getComponentAfter(rootPane, routesTable)).isSameAs(gpsSignalCheckBox)
+    assertThat(focusPolicy.getComponentAfter(rootPane, gpsSignalCheckBox)).isSameAs(routesMap)
+    assertThat(focusPolicy.getComponentAfter(rootPane, routesMap)).isSameAs(slider)
+    assertThat(focusPolicy.getComponentAfter(rootPane, slider)).isSameAs(playPauseButton)
+    assertThat(focusPolicy.getComponentAfter(rootPane, playPauseButton)).isSameAs(speedComboBox)
+    assertThat(focusPolicy.getComponentAfter(rootPane, speedComboBox)).isSameAs(repeatCheckBox)
+    assertThat(focusPolicy.getComponentAfter(rootPane, repeatCheckBox)).isSameAs(closeButton)
 
     // Initial getGps completion must not pan routesMap away from the already-selected route,
     // and must send the first point of the initially selected route to the emulator.
@@ -694,7 +720,7 @@ class LocationDialogTest {
     val slider = ui.getComponent<JSlider> { it.name == "playbackSlider" }
     val timeLabel = ui.getComponent<JBLabel> { it.name == "playbackTimeLabel" }
     val playPauseButton = ui.getComponent<JButton> { it.name == "playPauseButton" }
-    val speedComboBox = ui.getComponent<ComboBox<PlaybackSpeed>> { it.name == "playbackSpeedComboBox" }
+    val speedComboBox = ui.getComponent<ComboBox<*>> { it.name == "playbackSpeedComboBox" }
     val repeatCheckBox = ui.getComponent<JBCheckBox> { it.name == "repeatPlaybackCheckBox" }
 
     // Verify westward headings are normalized to [0.0, 360.0).
@@ -736,7 +762,7 @@ class LocationDialogTest {
     assertThat(timeLabel.text).isEqualTo("00:02 / 00:04")
 
     // Start playback from 50% at 5X speed.
-    speedComboBox.selectedItem = PlaybackSpeed.SPEED_5X
+    speedComboBox.selectedIndex = 2
     repeatCheckBox.isSelected = false
     ui.clickOn(playPauseButton)
     assertThat(playPauseButton.icon).isEqualTo(AllIcons.Actions.Pause)
@@ -753,7 +779,7 @@ class LocationDialogTest {
     // Pause playback manually and verify speed resets to 0.0 and controls become interactive.
     ui.clickOn(playPauseButton)
     assertThat(playPauseButton.icon).isEqualTo(AllIcons.Actions.Execute)
-    assertThat((playPauseButton as IconButton).tooltipText).isEqualTo("Play")
+    assertThat(playPauseButton.tooltipText).isEqualTo("Play")
     assertThat(routesTable.isEnabled).isTrue()
     waitForCondition(5.seconds) { fakeEmulator.gpsLocation.speed == 0.0 }
 
@@ -770,7 +796,7 @@ class LocationDialogTest {
     assertThat(routesTable.isEnabled).isTrue()
 
     // Seek to the very end while playing (with repeat off) -> finishes at destination instead of restarting from 0.
-    speedComboBox.selectedItem = PlaybackSpeed.SPEED_1X
+    speedComboBox.selectedIndex = 0
     ui.clickOn(playPauseButton)
     waitForCondition(5.seconds) { playPauseButton.icon == AllIcons.Actions.Pause && fakeEmulator.gpsLocation.speed > 0.0 }
     slider.valueIsAdjusting = true
@@ -792,6 +818,77 @@ class LocationDialogTest {
     ui.clickOn(ui.getComponent<JButton> { it.text == "Close" })
     assertThat(dialogWrapper.isShowing).isFalse()
     waitForCondition(5.seconds) { fakeEmulator.gpsLocation.speed == 0.0 }
+  }
+
+  @Test
+  fun testGpsSignalControl() {
+    fakeEmulator.gpsLocation =
+      GpsState.newBuilder().setLatitude(40.7128).setLongitude(-74.0060).setAltitude(10.0).setSignalEnabled(false).build()
+    fakeEmulator.pauseGrpc()
+
+    val locationDialog = LocationDialog(emulatorController)
+    val dialogWrapper = locationDialog.show(projectRule.project)
+    val ui = FakeUi(dialogWrapper.rootPane)
+    ui.layoutAndDispatchEvents()
+
+    val gpsSignalCheckBox = ui.getComponent<JBCheckBox> { it.name == "gpsSignalCheckBox" }
+    assertThat(gpsSignalCheckBox.isEnabled).isFalse()
+    assertThat(gpsSignalCheckBox.isSelected).isTrue()
+
+    fakeEmulator.resumeGrpc()
+    waitForCondition(5.seconds) { gpsSignalCheckBox.isEnabled }
+    assertThat(gpsSignalCheckBox.isSelected).isFalse()
+
+    // Enable GPS signal -> sends setGps with signalEnabled = true while preserving coordinates.
+    ui.clickOn(gpsSignalCheckBox)
+    assertThat(gpsSignalCheckBox.isSelected).isTrue()
+    waitForCondition(5.seconds) { fakeEmulator.gpsLocation.signalEnabled }
+    assertThat(fakeEmulator.gpsLocation.latitude).isWithin(1e-4).of(40.7128)
+    assertThat(fakeEmulator.gpsLocation.longitude).isWithin(1e-4).of(-74.0060)
+
+    // Disable GPS signal -> sends setGps with signalEnabled = false.
+    ui.clickOn(gpsSignalCheckBox)
+    assertThat(gpsSignalCheckBox.isSelected).isFalse()
+    waitForCondition(5.seconds) { !fakeEmulator.gpsLocation.signalEnabled }
+
+    // Importing/selecting a location preserves the disabled GPS signal state.
+    val routeGpx = tempFolder.newFile("point.gpx").toPath()
+    routeGpx.writeText(
+      """
+      <?xml version="1.0" encoding="UTF-8"?>
+      <gpx version="1.1">
+        <trk>
+          <name>Short Walk</name>
+          <trkseg>
+            <trkpt lat="37.4220" lon="-122.0840"><ele>5.0</ele><time>2026-10-20T10:00:00Z</time></trkpt>
+            <trkpt lat="37.4230" lon="-122.0850"><ele>6.0</ele><time>2026-10-20T10:00:10Z</time></trkpt>
+          </trkseg>
+        </trk>
+      </gpx>
+      """
+        .trimIndent()
+    )
+    locationDialog.importGpxKmlFile(routeGpx)
+    waitForCondition(5.seconds) { abs(fakeEmulator.gpsLocation.latitude - 37.4220) < 1e-4 }
+    assertThat(fakeEmulator.gpsLocation.signalEnabled).isFalse()
+
+    dialogWrapper.close(DialogWrapper.CLOSE_EXIT_CODE)
+
+    // On an older emulator whose getGps reply omits signal_enabled, the checkbox stays disabled and checked.
+    fakeEmulator.gpsLocation = GpsState.getDefaultInstance()
+    val legacyDialog = LocationDialog(emulatorController)
+    val legacyWrapper = legacyDialog.show(projectRule.project)
+    val legacyUi = FakeUi(legacyWrapper.rootPane)
+    legacyUi.layoutAndDispatchEvents()
+
+    val legacyPlayPause = legacyUi.getComponent<JButton> { it.name == "playPauseButton" }
+    val legacyGpsSignalCheckBox = legacyUi.getComponent<JBCheckBox> { it.name == "gpsSignalCheckBox" }
+    waitForCondition(5.seconds) { legacyPlayPause.isEnabled && abs(fakeEmulator.gpsLocation.latitude - 37.4220) < 1e-4 }
+    assertThat(legacyGpsSignalCheckBox.isSelected).isTrue()
+    assertThat(legacyGpsSignalCheckBox.isEnabled).isFalse()
+    assertThat(fakeEmulator.gpsLocation.hasSignalEnabled()).isFalse()
+
+    legacyWrapper.close(DialogWrapper.CLOSE_EXIT_CODE)
   }
 
   @Test

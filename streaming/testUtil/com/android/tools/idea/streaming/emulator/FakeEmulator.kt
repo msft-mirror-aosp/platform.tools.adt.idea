@@ -231,7 +231,7 @@ class FakeEmulator(val avdFolder: Path, val grpcPort: Int, val registrationDirec
 
   @Volatile
   var batteryStatus: BatteryState = BatteryState.newBuilder().setChargeLevel(100).setStatus(BatteryState.BatteryStatus.NOT_CHARGING).build()
-  @Volatile var gpsLocation: GpsState = GpsState.newBuilder().setLatitude(0.0).setLongitude(0.0).setAltitude(0.0).build()
+  @Volatile var gpsLocation: GpsState = GpsState.newBuilder().setSignalEnabled(true).build()
   @Volatile var cellInfo: CellInfo = CellInfo.getDefaultInstance()
   @Volatile var activeCalls: List<Call> = emptyList()
   @Volatile var receivedSms: List<ModemSmsMessage> = emptyList()
@@ -1149,7 +1149,13 @@ class FakeEmulator(val avdFolder: Path, val grpcPort: Int, val registrationDirec
 
     override fun setGps(request: GpsState, responseObserver: StreamObserver<Empty>) {
       executor.execute {
-        gpsLocation = request
+        val previous = gpsLocation
+        gpsLocation =
+          if (!request.hasSignalEnabled() && previous.hasSignalEnabled()) {
+            request.toBuilder().setSignalEnabled(previous.signalEnabled).build()
+          } else {
+            request
+          }
         sendEmptyResponse(responseObserver)
       }
     }

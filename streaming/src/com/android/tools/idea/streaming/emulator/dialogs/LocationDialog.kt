@@ -47,6 +47,7 @@ import com.intellij.ui.components.JBLabel
 import com.intellij.ui.dsl.builder.Align
 import com.intellij.ui.dsl.builder.AlignX
 import com.intellij.ui.dsl.builder.RightGap
+import com.intellij.ui.dsl.builder.RowLayout
 import com.intellij.ui.dsl.builder.panel
 import com.intellij.ui.dsl.listCellRenderer.textListCellRenderer
 import com.intellij.util.ui.ListTableModel
@@ -61,6 +62,8 @@ import javax.swing.DefaultComboBoxModel
 import javax.swing.JButton
 import javax.swing.JLabel
 import javax.swing.JPanel
+import javax.swing.LayoutFocusTraversalPolicy
+import javax.swing.SwingUtilities
 import javax.xml.parsers.ParserConfigurationException
 import kotlin.math.min
 import kotlin.math.roundToLong
@@ -82,7 +85,7 @@ import org.jetbrains.annotations.VisibleForTesting
 import org.xml.sax.SAXException
 
 /** Playback speed multipliers supported by the emulator location dialog. */
-internal enum class PlaybackSpeed(val multiplier: Int, val displayName: String) {
+private enum class PlaybackSpeed(val multiplier: Int, val displayName: String) {
   SPEED_1X(1, "1X"),
   SPEED_2X(2, "2X"),
   SPEED_5X(5, "5X"),
@@ -95,6 +98,7 @@ internal enum class PlaybackSpeed(val multiplier: Int, val displayName: String) 
 }
 
 /** Represents a saved route row in [LocationDialog]. */
+@VisibleForTesting
 internal data class SavedRouteItem(
   val name: String,
   val description: String = "",
@@ -164,7 +168,11 @@ internal class LocationDialog(emulator: EmulatorController) :
   private val dialogScope = CoroutineScope(coroutineScope.coroutineContext + dialogJob)
 
   private var currentDeviceLocation: GeoPoint = GeoPoint.DEFAULT
+  private var currentSpeed: Double = 0.0
+  private var currentHeading: Double = 0.0
   private var gpsInitialized: Boolean = false
+  private var gpsSignalSupported: Boolean = false
+  private var gpsSignalEnabled: Boolean = true
 
   private val savedRoutes = mutableListOf<SavedRouteItem>()
   private var selectedRoute: SavedRouteItem? = null
@@ -203,6 +211,7 @@ internal class LocationDialog(emulator: EmulatorController) :
   private lateinit var repeatPlaybackCheckBox: JBCheckBox
   private lateinit var playbackSpeedLabel: JLabel
   private lateinit var playbackSpeedComboBox: ComboBox<PlaybackSpeed>
+  private lateinit var gpsSignalCheckBox: JBCheckBox
 
   private val gpsStateChannel =
     createStateChannel(
@@ -244,11 +253,21 @@ internal class LocationDialog(emulator: EmulatorController) :
         GeoPoint(state.latitude, state.longitude, state.altitude)
       }
     gpsInitialized = true
+    gpsSignalSupported = state.hasSignalEnabled()
+    gpsSignalEnabled = if (gpsSignalSupported) state.signalEnabled else true
+    if (::gpsSignalCheckBox.isInitialized) {
+      updateUi {
+        gpsSignalCheckBox.isSelected = gpsSignalEnabled
+        gpsSignalCheckBox.isEnabled = gpsSignalSupported
+      }
+    }
     val selectedFirstPoint = selectedRoute?.points?.firstOrNull()?.let { GeoPoint(it.latitude, it.longitude, it.elevation) }
     if (selectedFirstPoint != null) {
       sendGpsLocation(selectedFirstPoint)
     } else {
       currentDeviceLocation = point
+      currentSpeed = state.speed
+      currentHeading = state.bearing
       routesMap.deviceLocation = point
       routesMap.panTo(point)
     }
@@ -257,89 +276,116 @@ internal class LocationDialog(emulator: EmulatorController) :
 
   /** Creates contents of the dialog. */
   override fun createPanel(): DialogPanel {
+    val savedRoutesTablePanel = createSavedRoutesTablePanel()
     val dialogPanel = panel {
       row {
-        panel {
-            row {
-              label(message("location.dialog.saved.routes.label"))
-            }
-
-            row {
-              cell(createSavedRoutesTablePanel()).align(Align.FILL)
-            }
-              .resizableRow()
-          }
-          .align(Align.FILL)
-          .resizableColumn()
-
-        panel {
-            row {
-              cell(routesMap).align(Align.FILL)
-            }
-              .resizableRow()
-
-            row {
-              playbackSlider =
-                ProgressSlider(0, SLIDER_MAX, 0).apply {
-                  name = "playbackSlider"
-                  accessibleContext.accessibleName = message("location.dialog.accessible.playback.progress")
-                  addChangeListener { onPlaybackSliderChanged() }
-                }
-              cell(playbackSlider).align(AlignX.FILL).resizableColumn()
-
-              playbackTimeLabel =
-                JBLabel(formatTimeProgress(Duration.ZERO, Duration.ZERO)).apply {
-                  name = "playbackTimeLabel"
-                }
-              cell(playbackTimeLabel)
-            }
-
-            row {
-              val playLabel = message("location.dialog.button.play")
-              playPauseButton =
-                IconButton(AllIcons.Actions.Execute, playLabel) { toggleRoutePlayback() }
-                  .apply {
-                    name = "playPauseButton"
-                  }
-              cell(playPauseButton).accessibleName(playLabel)
-
-              placeholder().resizableColumn()
-
-              val speedLabel = message("location.dialog.label.playback.speed")
-              label(speedLabel).gap(RightGap.SMALL).applyToComponent {
-                name = "playbackSpeedLabel"
-                playbackSpeedLabel = this
+          panel {
+              row {
+                label(message("location.dialog.saved.routes.label"))
               }
-              comboBox(
-                  DefaultComboBoxModel(PlaybackSpeed.entries.toTypedArray()),
-                  renderer = textListCellRenderer { it?.displayName ?: "" },
-                )
-                .accessibleName(speedLabel.removeSuffix(":"))
-                .applyToComponent {
-                  name = "playbackSpeedComboBox"
-                  playbackSpeedComboBox = this
-                  playbackSpeedLabel.labelFor = this
-                  selectedItem = playbackSpeed
-                  addItemListener { event ->
-                    if (!isUpdatingUi && event.stateChange == ItemEvent.SELECTED) {
-                      (event.item as? PlaybackSpeed)?.let { playbackSpeed = it }
+
+              row {
+                cell(savedRoutesTablePanel).align(Align.FILL)
+              }
+                .resizableRow()
+            }
+            .align(Align.FILL)
+            .resizableColumn()
+
+          panel {
+              row {
+                cell(routesMap).align(Align.FILL)
+              }
+                .resizableRow()
+
+              row {
+                playbackSlider =
+                  ProgressSlider(0, SLIDER_MAX, 0).apply {
+                    name = "playbackSlider"
+                    accessibleContext.accessibleName = message("location.dialog.accessible.playback.progress")
+                    addChangeListener { onPlaybackSliderChanged() }
+                  }
+                cell(playbackSlider).align(AlignX.FILL).resizableColumn()
+
+                playbackTimeLabel =
+                  JBLabel(formatTimeProgress(Duration.ZERO, Duration.ZERO)).apply {
+                    name = "playbackTimeLabel"
+                  }
+                cell(playbackTimeLabel)
+              }
+            }
+            .align(Align.FILL)
+            .resizableColumn()
+        }
+        .layout(RowLayout.PARENT_GRID)
+        .resizableRow()
+
+      row {
+          gpsSignalCheckBox =
+            checkBox(message("location.dialog.checkbox.gps.signal"))
+              .applyToComponent {
+                name = "gpsSignalCheckBox"
+                isSelected = gpsSignalEnabled
+                isEnabled = gpsSignalSupported
+                addActionListener {
+                  if (!isUpdatingUi) {
+                    onGpsSignalToggled(isSelected)
+                  }
+                }
+              }
+              .component
+
+          panel {
+              row {
+                val playLabel = message("location.dialog.button.play")
+                playPauseButton =
+                  IconButton(AllIcons.Actions.Execute, playLabel) { toggleRoutePlayback() }
+                    .apply {
+                      name = "playPauseButton"
+                    }
+                cell(playPauseButton).accessibleName(playLabel)
+
+                placeholder().resizableColumn()
+
+                val speedLabel = message("location.dialog.label.playback.speed")
+                label(speedLabel).gap(RightGap.SMALL).applyToComponent {
+                  name = "playbackSpeedLabel"
+                  playbackSpeedLabel = this
+                }
+                comboBox(
+                    DefaultComboBoxModel(PlaybackSpeed.entries.toTypedArray()),
+                    renderer = textListCellRenderer { it?.displayName ?: "" },
+                  )
+                  .accessibleName(speedLabel.removeSuffix(":"))
+                  .applyToComponent {
+                    name = "playbackSpeedComboBox"
+                    playbackSpeedComboBox = this
+                    playbackSpeedLabel.labelFor = this
+                    selectedItem = playbackSpeed
+                    addItemListener { event ->
+                      if (!isUpdatingUi && event.stateChange == ItemEvent.SELECTED) {
+                        (event.item as? PlaybackSpeed)?.let { playbackSpeed = it }
+                      }
                     }
                   }
-                }
 
-              repeatPlaybackCheckBox =
-                JBCheckBox(message("location.dialog.checkbox.repeat.playback"), repeatPlayback).apply {
-                  name = "repeatPlaybackCheckBox"
-                  addActionListener { repeatPlayback = isSelected }
-                }
-              cell(repeatPlaybackCheckBox)
+                repeatPlaybackCheckBox =
+                  checkBox(message("location.dialog.checkbox.repeat.playback"))
+                    .applyToComponent {
+                      name = "repeatPlaybackCheckBox"
+                      isSelected = repeatPlayback
+                      addActionListener { repeatPlayback = isSelected }
+                    }
+                    .component
+              }
             }
-          }
-          .align(Align.FILL)
-          .resizableColumn()
-      }
-        .resizableRow()
+            .align(AlignX.FILL)
+        }
+        .layout(RowLayout.PARENT_GRID)
     }
+
+    dialogPanel.isFocusTraversalPolicyProvider = true
+    dialogPanel.focusTraversalPolicy = createFocusTraversalPolicy(dialogPanel, savedRoutesTablePanel)
 
     var initialIndex = -1
     updateUi {
@@ -354,6 +400,30 @@ internal class LocationDialog(emulator: EmulatorController) :
 
     return dialogPanel
   }
+
+  private fun createFocusTraversalPolicy(dialogPanel: Component, savedRoutesTablePanel: Component) =
+    object : LayoutFocusTraversalPolicy() {
+      init {
+        val baseComparator = comparator
+        comparator = Comparator { c1, c2 ->
+          when {
+            c1 === c2 -> 0
+            SwingUtilities.isDescendingFrom(c2, c1) -> -1
+            SwingUtilities.isDescendingFrom(c1, c2) -> 1
+            else -> {
+              val leftOrder = if (dialogPanel.componentOrientation.isLeftToRight) 0 else 1
+              val rightOrder = 1 - leftOrder
+              val col1 = if (isLeftColumnComponent(c1, savedRoutesTablePanel)) leftOrder else rightOrder
+              val col2 = if (isLeftColumnComponent(c2, savedRoutesTablePanel)) leftOrder else rightOrder
+              if (col1 != col2) col1.compareTo(col2) else baseComparator.compare(c1, c2)
+            }
+          }
+        }
+      }
+    }
+
+  private fun isLeftColumnComponent(component: Component, savedRoutesTablePanel: Component): Boolean =
+    SwingUtilities.isDescendingFrom(component, savedRoutesTablePanel) || SwingUtilities.isDescendingFrom(component, gpsSignalCheckBox)
 
   private fun createSavedRoutesTablePanel(): JPanel {
     return BorderLayoutPanelWithPreferredSize(280, 280, minimumWidth = 200).apply {
@@ -372,22 +442,37 @@ internal class LocationDialog(emulator: EmulatorController) :
     }
   }
 
+  private fun onGpsSignalToggled(enabled: Boolean) {
+    if (!gpsSignalSupported || gpsSignalEnabled == enabled) return
+    clearError()
+    gpsSignalEnabled = enabled
+    sendGpsState()
+  }
+
   private fun sendGpsLocation(point: GeoPoint, speed: Double = 0.0, heading: Double = 0.0) {
-    stateModified = true
     gpsInitialized = true
     currentDeviceLocation = point
+    currentSpeed = speed
+    currentHeading = heading
     routesMap.deviceLocation = point
-    val gpsState =
+    sendGpsState()
+  }
+
+  private fun sendGpsState() {
+    stateModified = true
+    val builder =
       GpsState.newBuilder()
         .setPassiveUpdate(true)
-        .setLatitude(point.latitude)
-        .setLongitude(point.longitude)
-        .setAltitude(point.elevation)
-        .setSpeed(speed)
-        .setBearing(heading)
+        .setLatitude(currentDeviceLocation.latitude)
+        .setLongitude(currentDeviceLocation.longitude)
+        .setAltitude(currentDeviceLocation.elevation)
+        .setSpeed(currentSpeed)
+        .setBearing(currentHeading)
         .setSatellites(DEFAULT_SATELLITES)
-        .build()
-    gpsStateChannel.trySend(gpsState)
+    if (gpsSignalSupported) {
+      builder.signalEnabled = gpsSignalEnabled
+    }
+    gpsStateChannel.trySend(builder.build())
   }
 
   private fun chooseAndImportGpxKmlFile() {
