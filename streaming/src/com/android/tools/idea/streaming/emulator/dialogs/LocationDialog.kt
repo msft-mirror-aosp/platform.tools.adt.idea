@@ -303,13 +303,6 @@ internal class LocationDialog(emulator: EmulatorController) :
                   }
               cell(playPauseButton).accessibleName(playLabel)
 
-              repeatPlaybackCheckBox =
-                JBCheckBox(message("location.dialog.checkbox.repeat.playback"), repeatPlayback).apply {
-                  name = "repeatPlaybackCheckBox"
-                  addActionListener { repeatPlayback = isSelected }
-                }
-              cell(repeatPlaybackCheckBox)
-
               placeholder().resizableColumn()
 
               val speedLabel = message("location.dialog.label.playback.speed")
@@ -333,6 +326,13 @@ internal class LocationDialog(emulator: EmulatorController) :
                     }
                   }
                 }
+
+              repeatPlaybackCheckBox =
+                JBCheckBox(message("location.dialog.checkbox.repeat.playback"), repeatPlayback).apply {
+                  name = "repeatPlaybackCheckBox"
+                  addActionListener { repeatPlayback = isSelected }
+                }
+              cell(repeatPlaybackCheckBox)
             }
           }
           .align(Align.FILL)
