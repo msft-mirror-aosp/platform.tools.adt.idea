@@ -90,14 +90,15 @@ object MeasurementPluginConfig {
 // configuration cache is reused, configuration callbacks do not run, so CONFIGURATION_FINISHED is not recorded for such builds.
 class MeasurementPlugin @Inject constructor(private val registry: BuildEventsListenerRegistry) : Plugin<Settings> {
   override fun apply(settings: Settings) {
-    if (settings.gradle.parent == null && CaptureType.HEAP_PEAK in MeasurementPluginConfig.captureTypes) {
+    val isRootBuild = settings.gradle.parent == null
+    if (isRootBuild && CaptureType.HEAP_PEAK in MeasurementPluginConfig.captureTypes) {
       HeapPeakTracker.startBuild()
     }
     if (MeasurementPluginConfig.captureJfr) {
       EventRecorder.startJavaFlightRecording()
     }
     settings.gradle.projectsEvaluated {
-      if (it.parent == null && CaptureType.HEAP_PEAK in MeasurementPluginConfig.captureTypes) {
+      if (isRootBuild && CaptureType.HEAP_PEAK in MeasurementPluginConfig.captureTypes) {
         // Capture peak heap before CONFIGURATION_FINISHED triggers a Full GC via gcClassHistogram / dumpHeap.
         EventRecorder.captureHeapPeak(EventRecorder.CONFIGURATION_PEAK_HEAP_SUFFIX)
       }
