@@ -26,6 +26,7 @@ import com.android.tools.profilers.memory.adapters.classifiers.ClassSet
 import com.android.tools.profilers.memory.adapters.classifiers.ClassifierSet
 import com.google.common.annotations.VisibleForTesting
 import java.io.BufferedWriter
+import java.io.ByteArrayOutputStream
 import java.io.OutputStream
 import java.io.OutputStreamWriter
 import java.util.stream.Stream
@@ -99,7 +100,18 @@ class CsvExporter(
       override fun run() =
         ideProfilerComponents
           .createExportDialog()
-          .open({ "Export As" }, MemoryProfiler::generateCaptureFileName, { "csv" }, { ideServices.saveFile(it, ::exportEntries, null) })
+          .open(
+            { "Export As" },
+            MemoryProfiler::generateCaptureFileName,
+            { "csv" },
+            { file ->
+              // saveFile writes on a background thread, but the tree and the memory model belong to the UI thread.
+              // So build the CSV here and only write the bytes in the background. An exception is rethrown inside saveFile,
+              // so it is still logged and shown as "Export Failed".
+              val csv = runCatching { ByteArrayOutputStream().also { exportEntries(it) } }
+              ideServices.saveFile(file, { output -> csv.getOrThrow().writeTo(output) }, null)
+            },
+          )
 
       override fun exportEntries(output: OutputStream) {
         val writer = BufferedWriter(OutputStreamWriter(output))

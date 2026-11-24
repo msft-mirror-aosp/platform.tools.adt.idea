@@ -27,6 +27,10 @@ import static com.android.tools.profilers.memory.MemoryProfilerTestUtils.findChi
 import static com.android.tools.profilers.memory.MemoryProfilerTestUtils.findChildWithPredicate;
 import static com.android.tools.profilers.memory.MemoryProfilerTestUtils.verifyNode;
 import static com.google.common.truth.Truth.assertThat;
+import static org.junit.Assert.fail;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
 
 import com.android.tools.adtui.common.ColumnTreeTestInfo;
@@ -40,8 +44,11 @@ import com.android.tools.idea.transport.faketransport.FakeGrpcChannel;
 import com.android.tools.idea.transport.faketransport.FakeTransportService;
 import com.android.tools.profiler.proto.Common;
 import com.android.tools.profiler.proto.Memory;
+import com.android.tools.profilers.ExportDialog;
 import com.android.tools.profilers.FakeIdeProfilerComponents;
 import com.android.tools.profilers.FakeIdeProfilerServices;
+import com.android.tools.profilers.IdeProfilerComponents;
+import com.android.tools.profilers.IdeProfilerServices;
 import com.android.tools.profilers.ProfilerClient;
 import com.android.tools.profilers.ProfilersTestData;
 import com.android.tools.profilers.StudioProfilers;
@@ -69,6 +76,9 @@ import com.intellij.testFramework.RunsInEdt;
 import com.intellij.ui.ColoredTreeCellRenderer;
 import icons.StudioIcons;
 import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
@@ -77,6 +87,7 @@ import java.util.List;
 import java.util.Queue;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import javax.swing.JScrollPane;
@@ -87,6 +98,7 @@ import org.jetbrains.annotations.NotNull;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 
 @RunsInEdt
@@ -394,7 +406,7 @@ public class MemoryClassifierViewTest {
   }
 
   @Test
-  public void testCsvExporting() {
+  public void testCsvExporting() throws Exception {
     final String CLASS_NAME_0 = "com.android.studio.Foo";
     final String CLASS_NAME_1 = "com.google.Bar";
     final String CLASS_NAME_2 = "com.android.studio.Baz";
@@ -459,6 +471,73 @@ public class MemoryClassifierViewTest {
                                            myFakeIdeProfilerComponents, myStage.getStudioProfilers().getIdeServices());
     checkCsvOutput((CsvExporter.RunnableContextMenuItem)exporter.makeClassExportItem(), captureObject::getClassifierAttributes);
     checkCsvOutput((CsvExporter.RunnableContextMenuItem)exporter.makeInstanceExportItem(), captureObject::getInstanceAttributes);
+    checkCsvSelectionReadBeforeWrite(classifierTree, captureObject);
+    checkCsvBuildFailureGoesToSaveFile(classifierTree, new TreePath(new Object[]{root, childrenOfRoot.get(0)}));
+  }
+
+  /**
+   * saveFile can write the file later on a background thread. Checks that the CSV is built when the user picks the file, not at write
+   * time.
+   */
+  private static void checkCsvSelectionReadBeforeWrite(@NotNull JTree classifierTree, @NotNull CaptureObject captureObject) throws Exception {
+    ExportDialog dialog = mock(ExportDialog.class);
+    IdeProfilerComponents components = mock(IdeProfilerComponents.class);
+    Mockito.when(components.createExportDialog()).thenReturn(dialog);
+    IdeProfilerServices services = mock(IdeProfilerServices.class);
+    CsvExporter exporter = new CsvExporter(() -> classifierTree, () -> captureObject, components, services);
+
+    exporter.makeClassExportItem().run();
+    @SuppressWarnings("unchecked") ArgumentCaptor<Consumer<File>> pickFile = ArgumentCaptor.forClass(Consumer.class);
+    Mockito.verify(dialog).open(any(), any(), any(), pickFile.capture());
+    File file = File.createTempFile("export", ".csv");
+    file.deleteOnExit();
+    pickFile.getValue().accept(file);
+    @SuppressWarnings("unchecked") ArgumentCaptor<Consumer<FileOutputStream>> write = ArgumentCaptor.forClass(Consumer.class);
+    Mockito.verify(services).saveFile(eq(file), write.capture(), isNull());
+
+    // The CSV for the selection at the time the user picked the file.
+    ByteArrayOutputStream expected = new ByteArrayOutputStream();
+    ((CsvExporter.RunnableContextMenuItem)exporter.makeClassExportItem()).exportEntries(expected);
+    assertThat(expected.size()).isGreaterThan(0);
+
+    // The user changes the selection before the background write runs.
+    classifierTree.clearSelection();
+    try (FileOutputStream out = new FileOutputStream(file)) {
+      write.getValue().accept(out);
+    }
+
+    assertThat(Files.readAllBytes(file.toPath())).isEqualTo(expected.toByteArray());
+  }
+
+  /** A failure while building the CSV must reach saveFile, so it is reported as a failed export, and not thrown on the UI thread. */
+  private static void checkCsvBuildFailureGoesToSaveFile(@NotNull JTree classifierTree, @NotNull TreePath selection) throws Exception {
+    // The CSV only reads the model when something is selected.
+    classifierTree.setSelectionPath(selection);
+    ExportDialog dialog = mock(ExportDialog.class);
+    IdeProfilerComponents components = mock(IdeProfilerComponents.class);
+    Mockito.when(components.createExportDialog()).thenReturn(dialog);
+    IdeProfilerServices services = mock(IdeProfilerServices.class);
+    RuntimeException failure = new RuntimeException("model failed");
+    CsvExporter exporter = new CsvExporter(() -> classifierTree, () -> { throw failure; }, components, services);
+
+    exporter.makeClassExportItem().run();
+    @SuppressWarnings("unchecked") ArgumentCaptor<Consumer<File>> pickFile = ArgumentCaptor.forClass(Consumer.class);
+    Mockito.verify(dialog).open(any(), any(), any(), pickFile.capture());
+    File file = File.createTempFile("export", ".csv");
+    file.deleteOnExit();
+    // Picking the file must not throw.
+    pickFile.getValue().accept(file);
+    @SuppressWarnings("unchecked") ArgumentCaptor<Consumer<FileOutputStream>> write = ArgumentCaptor.forClass(Consumer.class);
+    Mockito.verify(services).saveFile(eq(file), write.capture(), isNull());
+
+    // The failure comes out of the write, where saveFile logs it and shows "Export Failed".
+    try (FileOutputStream out = new FileOutputStream(file)) {
+      write.getValue().accept(out);
+      fail("Expected the CSV build failure to be rethrown");
+    }
+    catch (RuntimeException e) {
+      assertThat(e).isSameAs(failure);
+    }
   }
 
   private static void checkCsvOutput(CsvExporter.RunnableContextMenuItem exporter, Supplier<List<?>> attributes) {

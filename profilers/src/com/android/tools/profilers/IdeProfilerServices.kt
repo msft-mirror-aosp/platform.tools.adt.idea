@@ -68,9 +68,13 @@ interface IdeProfilerServices {
   /**
    * Saves a file to the file system and have IDE internal state reflect this file addition.
    *
+   * The IDE writes the file in the background, so this can return before the file is written. [fileOutputStreamConsumer] may run on a
+   * background thread, so it must not read UI state.
+   *
    * @param file File to save to.
    * @param fileOutputStreamConsumer [Consumer] to write the file contents into the supplied [FileOutputStream].
-   * @param postRunnable A callback for when the system finally finishes writing to and synchronizing the file.
+   * @param postRunnable A callback for when the system finally finishes writing to and synchronizing the file. It runs on the UI thread,
+   *   and only if the file was written. It does not run if the write fails or is cancelled.
    */
   fun saveFile(file: File, fileOutputStreamConsumer: Consumer<FileOutputStream>, postRunnable: Runnable?)
 

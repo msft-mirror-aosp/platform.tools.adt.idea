@@ -74,6 +74,8 @@ class ImportAndExportTraceTest : ProfilersTestBase() {
         openPastRecordingsTab(studio)
         selectLastRecordingFromRecordingList(studio)
         exportRecording(studio)
+        // The export runs in the background, so wait for it to finish before checking the file.
+        verifyIdeaLog(".*Successfully exported recording to: .*ExportedTraceFile\\.trace\$", 120)
         // Verify successful export by comparing the size of the exported trace file
         // with the size of the last recording (cpu-simpleperf).
         val importedFile = File(project.targetProject.toFile().absolutePath + "/sampleTaskRecordings/cpu-simpleperf.trace")

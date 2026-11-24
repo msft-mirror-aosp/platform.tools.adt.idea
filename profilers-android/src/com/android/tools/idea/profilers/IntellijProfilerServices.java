@@ -207,8 +207,39 @@ public class IntellijProfilerServices implements IdeProfilerServices, Disposable
     return classNames;
   }
 
+  /**
+   * Writes the file in a background task with a progress bar, so the UI does not freeze.
+   *
+   * <p>Exporting a recording can fetch a large trace from the transport pipeline, which can take a long time (b/559079049).
+   */
   @Override
   public void saveFile(@NotNull File file, @NotNull Consumer<FileOutputStream> fileOutputStreamConsumer, @Nullable Runnable postRunnable) {
+    runExportTask(new Task.Backgroundable(myProject, "Exporting " + file.getName(), true) {
+      @Override
+      public void run(@NotNull ProgressIndicator indicator) {
+        writeFile(file, fileOutputStreamConsumer, postRunnable, indicator);
+      }
+    });
+  }
+
+  /** Runs the export task. Tests override this to control when and where the task runs. */
+  @VisibleForTesting
+  void runExportTask(@NotNull Task.Backgroundable task) {
+    ProgressManager.getInstance().run(task);
+  }
+
+  /**
+   * Writes the file on the calling thread, then shows a success or error balloon.
+   *
+   * <p>The writers can't stop halfway, so we check for cancel only after they finish. A cancelled export deletes the file and shows no balloon.
+   */
+  @VisibleForTesting
+  void writeFile(@NotNull File file,
+                 @NotNull Consumer<FileOutputStream> fileOutputStreamConsumer,
+                 @Nullable Runnable postRunnable,
+                 @NotNull ProgressIndicator indicator) {
+    // Stop before touching the disk if the task was cancelled before it started. Opening the stream would empty an existing file.
+    indicator.checkCanceled();
     File parentDir = file.getParentFile();
     // Re-check isDirectory() after mkdirs() so that a directory created concurrently by another thread is not treated as a failure.
     if (parentDir != null && !parentDir.isDirectory() && !parentDir.mkdirs() && !parentDir.isDirectory()) {
@@ -219,13 +250,17 @@ public class IntellijProfilerServices implements IdeProfilerServices, Disposable
 
     try (FileOutputStream fos = new FileOutputStream(file)) {
       fileOutputStreamConsumer.accept(fos);
+      indicator.checkCanceled();
     }
     catch (ProcessCanceledException pce) {
+      // Don't leave a partly written file behind.
+      FileUtil.delete(file);
       throw pce;
     }
     catch (Exception e) {
       if (e instanceof CancellationException || e.getCause() instanceof ProcessCanceledException) {
         getLogger().info("Export cancelled for: " + file.getPath());
+        FileUtil.delete(file);
         return;
       }
       getLogger().warn("Failed to export recording to: " + file.getPath(), e);

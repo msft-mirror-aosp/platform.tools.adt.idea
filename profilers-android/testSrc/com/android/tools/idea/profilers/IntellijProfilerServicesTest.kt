@@ -53,7 +53,9 @@ import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.module.EmptyModuleManager
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleManager
+import com.intellij.openapi.progress.EmptyProgressIndicator
 import com.intellij.openapi.progress.ProcessCanceledException
+import com.intellij.openapi.progress.Task
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
 import com.intellij.psi.PsiManager
@@ -77,6 +79,7 @@ import org.junit.rules.TemporaryFolder
 import org.mockito.Mockito
 import org.mockito.kotlin.any
 import org.mockito.kotlin.anyOrNull
+import org.mockito.kotlin.doAnswer
 import org.mockito.kotlin.doReturn
 import org.mockito.kotlin.eq
 import org.mockito.kotlin.mock
@@ -587,15 +590,16 @@ class IntellijProfilerServicesTest {
   }
 
   @Test
-  fun saveFileShowsSuccessNotification() {
+  fun writeFileShowsSuccessNotification() {
     val androidNotification = project.getService(AndroidNotification::class.java)
     val tempFile = File.createTempFile("test_recording", ".trace")
     tempFile.deleteOnExit()
 
-    intellijProfilerServices.saveFile(
+    intellijProfilerServices.writeFile(
       tempFile,
       { fos -> fos.write("test_data".toByteArray()) },
       null,
+      EmptyProgressIndicator(),
     )
 
     assertTrue(tempFile.exists())
@@ -622,17 +626,18 @@ class IntellijProfilerServicesTest {
   }
 
   @Test
-  fun saveFileShowsErrorNotificationOnFailure() {
+  fun writeFileShowsErrorNotificationOnFailure() {
     val androidNotification = project.getService(AndroidNotification::class.java)
     val parentAsFile = File.createTempFile("fake_dir", ".tmp")
     parentAsFile.deleteOnExit()
     val uncreatableDir = File(parentAsFile, "uncreatable_dir")
     val nonExistentDirFile = File(uncreatableDir, "test.trace")
 
-    intellijProfilerServices.saveFile(
+    intellijProfilerServices.writeFile(
       nonExistentDirFile,
       { fos -> fos.write("data".toByteArray()) },
       null,
+      EmptyProgressIndicator(),
     )
 
     verify(androidNotification)
@@ -657,12 +662,12 @@ class IntellijProfilerServicesTest {
   }
 
   @Test
-  fun saveFileShowsErrorNotificationOnWriteFailure() {
+  fun writeFileShowsErrorNotificationOnWriteFailure() {
     val androidNotification = project.getService(AndroidNotification::class.java)
     val tempFile = File.createTempFile("test_recording", ".trace")
     tempFile.deleteOnExit()
 
-    intellijProfilerServices.saveFile(tempFile, { throw IOException("disk full") }, null)
+    intellijProfilerServices.writeFile(tempFile, { throw IOException("disk full") }, null, EmptyProgressIndicator())
 
     // Opening the stream truncates the file, so a failed write must not leave an empty one behind.
     assertFalse(tempFile.exists())
@@ -676,17 +681,112 @@ class IntellijProfilerServicesTest {
   }
 
   @Test
-  fun saveFileRethrowsCancellationWithoutNotification() {
+  fun writeFileRethrowsCancellationWithoutNotification() {
     val androidNotification = project.getService(AndroidNotification::class.java)
     val tempFile = File.createTempFile("test_recording", ".trace")
     tempFile.deleteOnExit()
 
     assertFailsWith<ProcessCanceledException> {
-      intellijProfilerServices.saveFile(tempFile, { throw ProcessCanceledException() }, null)
+      intellijProfilerServices.writeFile(tempFile, { throw ProcessCanceledException() }, null, EmptyProgressIndicator())
     }
 
-    // A cancelled export is not a failure, so no balloon should be shown.
+    // A cancelled export is not a failure, so no balloon should be shown. The partly written file is removed.
+    assertFalse(tempFile.exists())
     verifyNoInteractions(androidNotification)
+  }
+
+  @Test
+  fun writeFileDeletesFileWhenUserCancels() {
+    val androidNotification = project.getService(AndroidNotification::class.java)
+    val tempFile = File.createTempFile("test_recording", ".trace")
+    tempFile.deleteOnExit()
+    val indicator = EmptyProgressIndicator()
+
+    // The user clicks Cancel while the writer runs. The writer can't stop, so it still finishes.
+    assertFailsWith<ProcessCanceledException> {
+      intellijProfilerServices.writeFile(
+        tempFile,
+        { fos ->
+          indicator.cancel()
+          fos.write("test_data".toByteArray())
+        },
+        null,
+        indicator,
+      )
+    }
+
+    // The finished file is thrown away and no "Export Successful" balloon is shown.
+    assertFalse(tempFile.exists())
+    verifyNoInteractions(androidNotification)
+  }
+
+  @Test
+  fun writeFileDoesNothingWhenCancelledBeforeStart() {
+    val androidNotification = project.getService(AndroidNotification::class.java)
+    val existingFile = File.createTempFile("test_recording", ".trace")
+    existingFile.deleteOnExit()
+    existingFile.writeText("old_data")
+    val indicator = EmptyProgressIndicator()
+    indicator.cancel()
+    var writeCalled = false
+
+    assertFailsWith<ProcessCanceledException> {
+      intellijProfilerServices.writeFile(existingFile, { writeCalled = true }, null, indicator)
+    }
+
+    // The existing file the user chose to replace must be left as it was.
+    assertFalse(writeCalled)
+    assertEquals("old_data", existingFile.readText())
+    verifyNoInteractions(androidNotification)
+  }
+
+  @Test
+  fun saveFileWritesInCancellableBackgroundTask() {
+    val tempFile = File.createTempFile("test_recording", ".trace")
+    tempFile.deleteOnExit()
+    val services = spy(intellijProfilerServices)
+    var task: Task.Backgroundable? = null
+    doAnswer { invocation ->
+        task = invocation.getArgument(0)
+        null
+      }
+      .whenever(services)
+      .runExportTask(any())
+    var writeCalled = false
+
+    ApplicationManager.getApplication().invokeAndWait {
+      services.saveFile(
+        tempFile,
+        { fos ->
+          writeCalled = true
+          fos.write("test_data".toByteArray())
+        },
+        null,
+      )
+    }
+
+    // saveFile must hand the write to a task and return, so a slow export does not freeze the UI.
+    val exportTask = task!!
+    assertThat(writeCalled).isFalse()
+    assertThat(exportTask.isCancellable).isTrue()
+    assertThat(exportTask.title).isEqualTo("Exporting ${tempFile.name}")
+
+    // The progress manager runs the task on a background thread.
+    ApplicationManager.getApplication().executeOnPooledThread { exportTask.run(EmptyProgressIndicator()) }.get(10, TimeUnit.SECONDS)
+
+    assertThat(writeCalled).isTrue()
+    assertEquals("test_data", tempFile.readText())
+  }
+
+  @Test
+  fun saveFileWritesFileThroughProgressManager() {
+    val tempFile = File.createTempFile("test_recording", ".trace")
+    tempFile.deleteOnExit()
+
+    // In unit test mode the progress manager runs the task right away, on the calling thread.
+    intellijProfilerServices.saveFile(tempFile, { fos -> fos.write("test_data".toByteArray()) }, null)
+
+    assertEquals("test_data", tempFile.readText())
   }
 
   @Test
