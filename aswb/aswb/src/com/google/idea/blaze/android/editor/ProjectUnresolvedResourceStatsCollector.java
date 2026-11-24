@@ -179,7 +179,6 @@ class ProjectUnresolvedResourceStatsCollector implements Disposable {
       return;
     }
 
-
     HighlightStats highlightStats =
         HighlightStats.builder()
             .setProject(project)
@@ -267,7 +266,7 @@ class ProjectUnresolvedResourceStatsCollector implements Disposable {
    */
   static class CollectorSyncListener implements SyncListener {
     @Override
-    public void onQuerySyncStart(Project project, BlazeContext context) {
+    public void onQuerySyncStart(Project project) {
       if (!UnresolvedResourceStatsCollector.enabled.getValue()) {
         return;
       }
@@ -285,8 +284,7 @@ class ProjectUnresolvedResourceStatsCollector implements Disposable {
       if (!UnresolvedResourceStatsCollector.enabled.getValue()) {
         return;
       }
-      ProjectUnresolvedResourceStatsCollector.getInstance(project)
-          .onSyncComplete(syncResult);
+      ProjectUnresolvedResourceStatsCollector.getInstance(project).onSyncComplete(syncResult);
     }
   }
 }

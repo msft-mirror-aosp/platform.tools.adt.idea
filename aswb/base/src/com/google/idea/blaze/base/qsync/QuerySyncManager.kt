@@ -543,7 +543,7 @@ constructor(private val project: Project, private val coroutineScope: CoroutineS
     val previousQueryInstant = lastQueryInstant
     try {
       for (syncListener in SyncListener.EP_NAME.extensions) {
-        syncListener.onQuerySyncStart(project, context)
+        syncListener.onQuerySyncStart(project)
       }
       return block().also {
         // On success only.

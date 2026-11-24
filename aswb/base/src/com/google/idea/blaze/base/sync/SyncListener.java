@@ -39,5 +39,5 @@ public interface SyncListener {
   default void afterQuerySync(Project project, BlazeContext context) {}
 
   /** Called before sync. Only used in new query-sync * */
-  default void onQuerySyncStart(Project project, BlazeContext context) {}
+  default void onQuerySyncStart(Project project) {}
 }

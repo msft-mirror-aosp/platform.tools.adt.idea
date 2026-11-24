@@ -37,7 +37,6 @@ import com.intellij.ui.ColoredTreeCellRenderer;
 import com.intellij.ui.SimpleTextAttributes;
 import java.util.Set;
 
-
 /** Shows the number of external dependencies that need to be build for a source file. */
 public class QuerySyncNodeDecorator implements ProjectViewNodeDecorator {
 
@@ -90,20 +89,20 @@ public class QuerySyncNodeDecorator implements ProjectViewNodeDecorator {
 
   static class Listener implements SyncListener {
     private void updatePane(Project project) {
-      ApplicationManager.getApplication().invokeLater(
-        ()-> {
-          AbstractProjectViewPane currentPane =
-            ProjectView.getInstance(project).getCurrentProjectViewPane();
-          if (currentPane != null) {
-            // This tells the active pane to rebuild its tree structure from the root.
-            currentPane.updateFromRoot(true);
-          }
-        }
-      );
+      ApplicationManager.getApplication()
+          .invokeLater(
+              () -> {
+                AbstractProjectViewPane currentPane =
+                    ProjectView.getInstance(project).getCurrentProjectViewPane();
+                if (currentPane != null) {
+                  // This tells the active pane to rebuild its tree structure from the root.
+                  currentPane.updateFromRoot(true);
+                }
+              });
     }
 
     @Override
-    public void onQuerySyncStart(Project project, BlazeContext context) {
+    public void onQuerySyncStart(Project project) {
       updatePane(project);
     }
 
