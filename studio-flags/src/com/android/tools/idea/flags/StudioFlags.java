@@ -1316,18 +1316,9 @@ public final class StudioFlags {
   public static final Flag<Boolean> EMBEDDED_EMULATOR_ALLOW_DESKTOP_SDK37PLUS_AVD = new BooleanFlag(
     EMBEDDED_EMULATOR, "allow.desktop.sdk37plus", "Allow Desktop AVD (SDK 37+) to run embedded",
     "Enables running a Desktop AVD (SDK 37+) in the Running Devices tool window");
-  public static final Flag<Boolean> EMBEDDED_EMULATOR_XR_HAND_AND_EYE_INPUT = new BooleanFlag(
-    EMBEDDED_EMULATOR, "xr.hand.and.eye.input", "Enable hand and eye input modes for XR AVDs",
-    "Enables hand and eye input modes for XR AVDs");
   public static final Flag<Boolean> EMBEDDED_EMULATOR_XR_HAND_AND_EYE_CURSORS = new BooleanFlag(
     EMBEDDED_EMULATOR, "xr.hand.and.eye.cursors", "Use hand and eye cursors for XR AVDs",
     "Enables distinctive cursors for hand and eye input modes for XR AVDs");
-  public static final Flag<Boolean> EMBEDDED_EMULATOR_CAMERA_ENVIRONMENT = new BooleanFlag(
-    EMBEDDED_EMULATOR, "camera.environment", "Enable Camera Environment",
-    "Enables displaying host cameras in the environment menu for AI Glasses");
-  public static final Flag<Boolean> EMBEDDED_EMULATOR_360_IMAGE_ENVIRONMENT = new BooleanFlag(
-    EMBEDDED_EMULATOR, "360.image.environment", "Enable 360 Image Environment",
-    "Enables 360 image support for AI Glasses environments");
   public static final Flag<Boolean> EMBEDDED_EMULATOR_3D_SCENE_ENVIRONMENT = new BooleanFlag(
     EMBEDDED_EMULATOR, "3d.scene.environment", "Enable 3D Scene Environment",
     "Enables 3D scene (.obj) support for AI Glasses environments");
@@ -1337,15 +1328,9 @@ public final class StudioFlags {
   public static final Flag<Boolean> EMBEDDED_EMULATOR_360_VIDEO_ENVIRONMENT = new BooleanFlag(
     EMBEDDED_EMULATOR, "360.video.environment", "Enable 360 Video Environment",
     "Enables 360 video (.mp4, .webm) support for AI Glasses environments");
-  public static final Flag<Boolean> EMBEDDED_EMULATOR_DISPLAY_OFF_INDICATOR = new BooleanFlag(
-    EMBEDDED_EMULATOR, "display.off.indicator", "Enable Display Off Indicator",
-    "Enables displaying \"Display off\" indicator for AI Glasses when display is turned off");
   public static final Flag<Boolean> EMBEDDED_EMULATOR_EXTENDED_CONTROLS_IN_STUDIO = new BooleanFlag(
     EMBEDDED_EMULATOR, "extended.controls.in.studio", "Enable Extended Controls in Studio",
     "Replaces external extended controls with the ones implemented in Studio");
-  public static final Flag<Boolean> RUNNING_DEVICES_HIDE_TOOL_WINDOW_NAME = new BooleanFlag(
-    EMBEDDED_EMULATOR, "hide.tool.window.name", "Hide Tool Window Name",
-    "Hides the name of the Running Devices window when it contains any device tabs");
   public static final Flag<Boolean> RUNNING_DEVICES_WRAP_TOOLBAR = new BooleanFlag(
     EMBEDDED_EMULATOR, "wrap.toolbar", "Enable Toolbar Wrapping",
     "Wraps the toolbar when all buttons don't fit into the available width");
@@ -1389,9 +1374,6 @@ public final class StudioFlags {
   public static final Flag<Boolean> DEVICE_MIRRORING_GLASSES_DISPLAY = new BooleanFlag(
     DEVICE_MIRRORING, "glasses.display", "Mirror Glasses Display",
     "Enable mirroring of glasses display");
-  public static final Flag<Boolean> DEVICE_MIRRORING_XR_SIMULATED_PASSTHROUGH = new BooleanFlag(
-    DEVICE_MIRRORING, "xr.simulated.passthrough", "Enable Simulated Passthrough for XR Headsets",
-    "Enable simulated passthrough for XR headsets");
   //endregion
 
   //region Screenshot and Screen Recording
