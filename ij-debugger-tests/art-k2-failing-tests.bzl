@@ -25,7 +25,6 @@ _tests = [
     "K2IdeK2CodeKotlinEvaluateExpressionTestGenerated$SingleBreakpoint$Uncategorized.testStepIntoLambdaWithParameterDestructuring",
     "K2IdeK2CodeKotlinEvaluateExpressionTestGenerated$SingleBreakpoint$Uncategorized.testStepIntoSamWithParameterDestructuring",  # b/578038532
     "K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testCoroutineUnitElimination",  # b/578123886
-    "K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testEquals",
     "K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testFilterFunctionCallsInTryCatchBlock",
     "K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testFinallyBlock",
     "K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testFunLiteral",  # b/578038532

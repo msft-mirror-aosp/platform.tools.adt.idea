@@ -112,8 +112,12 @@ class DexBytecodeInspectorImpl : DexBytecodeInspector, BytecodeInspector {
     val dex = DexFinder.findDex(debugProcess, expression, location) ?: return targets
 
     val filterer = KotlinSmartStepTargetFilterer(targets, debugProcess)
-    filterer.visitMethodUntilLocation(debugProcess, method, lines, location, dex)
-    return filterer.getUnvisitedTargets()
+    val visitation = filterer.visitMethod(debugProcess, method, lines, location, dex)
+    val eliminatedEqualsCalls = visitation.eliminated.filter { it.methodInfo.isEqualsNullCall }
+    return when (eliminatedEqualsCalls.isNotEmpty()) {
+      true -> visitation.unvisited - eliminatedEqualsCalls.toSet()
+      false -> visitation.unvisited
+    }
   }
 
   override fun isApplicable(virtualMachine: VirtualMachine) = DebuggerUtils.isAndroidVM(virtualMachine)
@@ -139,21 +143,26 @@ class DexBytecodeInspectorImpl : DexBytecodeInspector, BytecodeInspector {
   }
 }
 
-private suspend fun KotlinSmartStepTargetFilterer.visitMethodUntilLocation(
+private data class MethodVisitation(
+  val unvisited: List<KotlinMethodSmartStepTarget>,
+  val eliminated: List<KotlinMethodSmartStepTarget>,
+)
+
+private suspend fun KotlinSmartStepTargetFilterer.visitMethod(
   debugProcess: DebugProcessImpl,
   method: Method,
   lines: ClosedRange<Int>,
   location: Location,
   dex: Dex,
-) {
+): MethodVisitation {
   val debugInfo = method.getDebugInfo()
   if (debugInfo.lineTable.isEmpty()) {
-    return
+    return MethodVisitation(unvisited = getUnvisitedTargets(), eliminated = emptyList())
   }
 
   val methodBytecode = DexBytecode.fromBytes(method.bytecodes(), debugInfo)
   if (methodBytecode.instructions.isEmpty()) {
-    return
+    return MethodVisitation(unvisited = getUnvisitedTargets(), eliminated = emptyList())
   }
 
   val lineTableIterator = debugInfo.lineTable.iterator()
@@ -162,9 +171,11 @@ private suspend fun KotlinSmartStepTargetFilterer.visitMethodUntilLocation(
   var lineEverMatched = false
   var inInline = false
   val sortedInlineCalls = LinkedList(extractInlineCalls(location))
+  val targetCodeIndex = location.codeIndex().toUInt()
+  var unvisited: List<KotlinMethodSmartStepTarget>? = null
   for (insn in methodBytecode.instructions) {
-    if (insn.index >= location.codeIndex().toUInt()) {
-      break
+    if (unvisited == null && insn.index >= targetCodeIndex) {
+      unvisited = getUnvisitedTargets()
     }
 
     if (insn.index >= nextLine.index) {
@@ -206,6 +217,8 @@ private suspend fun KotlinSmartStepTargetFilterer.visitMethodUntilLocation(
       }
     }
   }
+  val eliminated = getUnvisitedTargets()
+  return MethodVisitation(unvisited ?: eliminated, eliminated)
 }
 
 private val DexMethod.owner: String

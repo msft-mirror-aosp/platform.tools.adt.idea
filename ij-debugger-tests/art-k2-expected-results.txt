@@ -34,7 +34,6 @@ org.jetbrains.kotlin.idea.k2.debugger.test.cases.K2IdeK2CodeKotlinEvaluateExpres
 org.jetbrains.kotlin.idea.k2.debugger.test.cases.K2IdeK2CodeKotlinEvaluateExpressionTestGenerated$SingleBreakpoint$Uncategorized.testStepIntoLambdaWithParameterDestructuring
 org.jetbrains.kotlin.idea.k2.debugger.test.cases.K2IdeK2CodeKotlinEvaluateExpressionTestGenerated$SingleBreakpoint$Uncategorized.testStepIntoSamWithParameterDestructuring
 org.jetbrains.kotlin.idea.k2.debugger.test.cases.K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testCoroutineUnitElimination
-org.jetbrains.kotlin.idea.k2.debugger.test.cases.K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testEquals
 org.jetbrains.kotlin.idea.k2.debugger.test.cases.K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testFilterFunctionCallsInTryCatchBlock
 org.jetbrains.kotlin.idea.k2.debugger.test.cases.K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testFinallyBlock
 org.jetbrains.kotlin.idea.k2.debugger.test.cases.K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testFunLiteral
@@ -85,7 +84,6 @@ org.jetbrains.kotlin.idea.k2.debugger.test.cases.K2IdeK2CodeKotlinSteppingTestGe
 org.jetbrains.kotlin.idea.k2.debugger.test.cases.K2IdeK2CodeKotlinVariablePrintingTestGenerated.testOptimisedVariablesInSuspendContexts
 org.jetbrains.kotlin.idea.k2.debugger.test.cases.K2IdeK2CodeXCoroutinesStackTraceTestGenerated.testSuspendMain
 org.jetbrains.kotlin.idea.k2.debugger.test.cases.K2IndyLambdaKotlinSteppingTestGenerated$Custom.testCoroutineUnitElimination
-org.jetbrains.kotlin.idea.k2.debugger.test.cases.K2IndyLambdaKotlinSteppingTestGenerated$Custom.testEquals
 org.jetbrains.kotlin.idea.k2.debugger.test.cases.K2IndyLambdaKotlinSteppingTestGenerated$Custom.testFilterFunctionCallsInTryCatchBlock
 org.jetbrains.kotlin.idea.k2.debugger.test.cases.K2IndyLambdaKotlinSteppingTestGenerated$Custom.testFinallyBlock
 org.jetbrains.kotlin.idea.k2.debugger.test.cases.K2IndyLambdaKotlinSteppingTestGenerated$Custom.testFunLiteral
