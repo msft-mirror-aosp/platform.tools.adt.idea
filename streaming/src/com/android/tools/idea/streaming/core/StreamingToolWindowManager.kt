@@ -334,6 +334,7 @@ internal class StreamingToolWindowManager @AnyThread constructor(private val too
     }
 
   private var toolbarPlacement: ToolbarPlacement
+    @AnyThread
     get() =
       projectProperties.getValue(TOOLBAR_PLACEMENT_PROPERTY)?.let {
         try {
