@@ -17,7 +17,7 @@ package com.android.tools.idea.adb.wireless
 
 object Urls {
   const val learnMore: String = "https://d.android.com/r/studio-ui/wifi-pairing"
-  const val troubleshootConnection: String = "https://d.android.com/r/studio-ui/troubleshoot-wifi-connection"
+  const val troubleshootConnection: String = "https://developer.android.com/tools/adb#wireless-android11-troubleshoot"
   /** Not a URL, but this value used as a hyperlink target directs the EditorPaneUtils.createHtmlEditorPane to open the SDK manager. */
   const val openSdkManager: String = "open-sdk-manager"
   const val openAdbSettings: String = "open-adb-settings"

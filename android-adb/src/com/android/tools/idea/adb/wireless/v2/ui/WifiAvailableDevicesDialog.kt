@@ -350,6 +350,16 @@ class WifiAvailableDevicesDialog(private val project: Project, private val wifiP
             pushStyle(SpanStyle(fontWeight = FontWeight.Bold))
             append("If both are correct, your network may be blocking mDNS traffic.")
             pop()
+            append("\n\n")
+            withLink(
+              LinkAnnotation.Url(
+                url = Urls.troubleshootConnection,
+                styles = TextLinkStyles(style = SpanStyle(color = LocalLinkStyle.current.colors.content)),
+                linkInteractionListener = { WifiPairingLinkHandler.handleLinkActivation(Urls.troubleshootConnection) },
+              )
+            ) {
+              append("Troubleshoot wireless connection")
+            }
           }
           Box(Modifier.fillMaxSize()) { Text(emptyText, Modifier.align(Alignment.Center), color = JewelTheme.globalColors.text.info) }
         } else {
