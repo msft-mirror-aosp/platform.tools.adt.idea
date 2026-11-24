@@ -38,7 +38,6 @@
     <projectService serviceImplementation="com.google.idea.blaze.android.projectsystem.ExternalLibraryInterner"/>
     <projectService serviceImplementation="com.google.idea.blaze.android.resources.BlazeLightResourceClassService"/>
     <projectService serviceImplementation="com.google.idea.blaze.android.projectsystem.BlazeProjectSystemSyncManager$LastSyncResultCache"/>
-    <projectService serviceImplementation="com.google.idea.blaze.android.editor.ProjectUnresolvedResourceStatsCollector"/>
     <projectService serviceInterface="com.google.idea.blaze.android.run.runner.BlazeDeployTargetService"
         serviceImplementation="com.google.idea.blaze.android.run.runner.BlazeDeployTargetService$DefaultService"/>
     <projectService serviceInterface="com.google.idea.blaze.android.run.runner.BlazeAndroidDebuggerService"
@@ -91,8 +90,6 @@
     <BlazeCommandRunConfigurationHelper implementation="com.google.idea.blaze.android.run.producers.AndroidBlazeCommandRunConfigurationHelper"/>
     <ProjectViewDefaultValueProvider implementation="com.google.idea.blaze.android.projectview.AndroidSdkPlatformSection$AndroidSdkPlatformProjectViewDefaultValueProvider"/>
     <AndroidTestLaunchMethodsProvider implementation="com.google.idea.blaze.android.run.test.BlazeAndroidTestLaunchMethodsProviderImpl"/>
-    <BlazeHighlightStatsCollector implementation="com.google.idea.blaze.android.editor.UnresolvedResourceStatsCollector"/>
-    <SyncListener implementation="com.google.idea.blaze.android.editor.ProjectUnresolvedResourceStatsCollector$CollectorSyncListener"/>
     <ComposeStatusProvider implementation="com.google.idea.blaze.android.compose.ExperimentComposeStatusProvider"/>
     <BlazeBuildListener implementation="com.google.idea.blaze.android.projectsystem.BlazeProjectSystemBuildManager$BuildCallbackPublisher"/>
     <android.ApkBuildStepProvider implementation="com.google.idea.blaze.android.run.BazelApkBuildStepProvider" />
