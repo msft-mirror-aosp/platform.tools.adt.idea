@@ -27,6 +27,7 @@ import com.android.sdklib.deviceprovisioner.ColdBootAction
 import com.android.sdklib.deviceprovisioner.CreateDeviceAction
 import com.android.sdklib.deviceprovisioner.DeactivationAction
 import com.android.sdklib.deviceprovisioner.DeviceAction
+import com.android.sdklib.deviceprovisioner.DeviceActionDisabledException
 import com.android.sdklib.deviceprovisioner.DeviceActionException
 import com.android.sdklib.deviceprovisioner.DeviceError
 import com.android.sdklib.deviceprovisioner.DeviceHandle
@@ -93,6 +94,7 @@ import com.intellij.openapi.ui.DoNotAskOption
 import com.intellij.openapi.ui.MessageDialogBuilder
 import com.intellij.openapi.ui.Messages
 import com.intellij.openapi.wm.WindowManager
+import com.intellij.platform.ide.progress.BackgroundTaskOwner
 import com.intellij.platform.ide.progress.withBackgroundProgress
 import com.intellij.platform.util.progress.reportProgressScope
 import com.intellij.platform.util.progress.withProgressText
@@ -100,6 +102,7 @@ import com.intellij.ui.EditorNotificationPanel
 import icons.StudioIcons
 import java.awt.Component
 import java.io.IOException
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.coroutines.CoroutineContext
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
@@ -286,17 +289,21 @@ class StudioLocalEmulatorDeviceHandle(
 
   private val defaultPresentation: DeviceAction.DefaultPresentation = StudioDefaultDeviceActionPresentation
 
+  private val isWaitingForSystemImage = AtomicBoolean(false)
+
   override suspend fun activate(
     project: Project?,
     forceLaunchInToolWindow: Boolean,
     bootMode: BootMode?,
   ) {
+    val effectiveProject = project ?: this.project
+    awaitSystemImageDownloadIfNeeded(effectiveProject)
+
     val activationPresentation = activationAction.presentation.value
     if (!activationPresentation.enabled) {
       val reason = activationPresentation.detail?.let { ": $it" } ?: "."
       throw DeviceActionException("Unable to launch ${state.properties.title}$reason")
     }
-    val effectiveProject = project ?: this.project
     val resolvedBootMode = bootMode ?: BootMode.fromProperties(avdInfo.properties)
     avdManagerConnection.checkAvdPreLaunch(effectiveProject, avdInfo)
 
@@ -354,6 +361,48 @@ class StudioLocalEmulatorDeviceHandle(
           launchAutomaticGlassesPairing()
         }
       }
+    }
+  }
+
+  /**
+   * If this AVD is stopped with [AvdStatus.ERROR_IMAGE_MISSING] while its required system image is actively being downloaded, suspends
+   * until the download finishes and refreshes AVD state before proceeding.
+   */
+  private suspend fun awaitSystemImageDownloadIfNeeded(effectiveProject: Project?) {
+    if (!baseDeviceHandle.state.isStopped() || avdInfo.status != AvdStatus.ERROR_IMAGE_MISSING) {
+      return
+    }
+    val requiredImagePath = AvdManagerConnection.getRequiredSystemImagePath(avdInfo) ?: return
+    if (downloadTracker.downloadStates.value[requiredImagePath] !is SdkDownloadState.InProgress) {
+      return
+    }
+
+    if (!isWaitingForSystemImage.compareAndSet(false, true)) {
+      throw DeviceActionDisabledException("${state.properties.title} is already waiting for system image download.")
+    }
+    try {
+      val taskOwner = effectiveProject?.let(BackgroundTaskOwner::project) ?: BackgroundTaskOwner.allFrames()
+      val downloadState =
+        withBackgroundProgress(taskOwner, "Waiting for system image for ${state.properties.title}...") {
+          downloadTracker.downloadStates.map { it[requiredImagePath] }.first { it !is SdkDownloadState.InProgress }
+        }
+
+      if (downloadState != SdkDownloadState.Completed) {
+        throw DeviceActionException("Failed to download system image for ${state.properties.title}.")
+      }
+
+      val missingImageMessage =
+        (baseDeviceHandle.state.error as? AvdDeviceError)?.takeIf { it.status == AvdStatus.ERROR_IMAGE_MISSING }?.message
+      withContext(ioDispatcher) { refreshDevices() }
+      withTimeoutOrNull(5.seconds) {
+        activationAction.presentation.first { presentation ->
+          presentation.enabled ||
+            !baseDeviceHandle.state.isStopped() ||
+            (missingImageMessage != null && presentation.detail != null && presentation.detail != missingImageMessage)
+        }
+      }
+    } finally {
+      isWaitingForSystemImage.set(false)
     }
   }
 

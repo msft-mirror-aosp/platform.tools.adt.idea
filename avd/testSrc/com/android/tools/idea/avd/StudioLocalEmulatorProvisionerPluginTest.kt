@@ -27,6 +27,7 @@ import com.android.sdklib.SystemImageTags
 import com.android.sdklib.deviceprovisioner.AbstractAvdScanner
 import com.android.sdklib.deviceprovisioner.AvdDeviceError
 import com.android.sdklib.deviceprovisioner.DeviceAction
+import com.android.sdklib.deviceprovisioner.DeviceActionDisabledException
 import com.android.sdklib.deviceprovisioner.DeviceActionException
 import com.android.sdklib.deviceprovisioner.DeviceHandle
 import com.android.sdklib.deviceprovisioner.DeviceId
@@ -64,6 +65,7 @@ import com.google.common.truth.Truth.assertWithMessage
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.ui.TestDialog
 import com.intellij.openapi.ui.TestDialogManager
+import com.intellij.openapi.util.Disposer
 import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.ProjectRule
 import com.intellij.testFramework.TemporaryDirectory
@@ -80,6 +82,8 @@ import kotlin.reflect.full.memberProperties
 import kotlin.test.assertFailsWith
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.async
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
@@ -92,7 +96,9 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.mockito.kotlin.any
+import org.mockito.kotlin.anyOrNull
 import org.mockito.kotlin.mock
+import org.mockito.kotlin.never
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 
@@ -844,6 +850,94 @@ class StudioLocalEmulatorProvisionerPluginTest {
 
       handleScope.cancel()
     }
+
+  @Test
+  fun activateWaitsForBackgroundSystemImageDownload(): Unit = runBlockingWithTimeout {
+    val packagePath = "system-images;android-34;google_apis;x86_64"
+    val disposable = Disposer.newDisposable()
+    try {
+      val downloadTracker = SdkDownloadTracker()
+      ApplicationManager.getApplication().replaceService(SdkDownloadTracker::class.java, downloadTracker, disposable)
+
+      val avdInfo = missingImageAvdInfo(avdManager.avdRoot, AvdStatus.ERROR_IMAGE_MISSING)
+      avdManager.createAvd(avdInfo)
+      plugin.refreshDevices()
+      yieldUntil { provisioner.devices.value.size == 1 }
+      val handle = provisioner.devices.value[0] as StudioLocalEmulatorDeviceHandle
+
+      val sdkFixture = SdkFixture()
+      sdkFixture.repoManager.addLocalChangeListener { avdManager.downloadAvdSystemImage(avdInfo) }
+      val operation = FakePackageOperation(FakeRemotePackage(packagePath), sdkFixture.repoManager)
+      operation.setInstallStatus(PackageOperation.InstallStatus.PREPARING)
+      downloadTracker.track(operation)
+
+      yieldUntil { handle.state.status == "Downloading system image..." }
+
+      val mockProcess = mock<Process>().apply { whenever(onExit()).thenReturn(CompletableFuture()) }
+      val mockConnection =
+        mock<AvdManagerConnection>().apply {
+          whenever(startAvdProcess(anyOrNull(), any(), any(), any())).thenAnswer { invocation ->
+            val launchedAvd = invocation.getArgument<AvdInfo>(1)
+            avdManager.startAvd(launchedAvd, QuickBoot)
+            mockProcess
+          }
+        }
+      AvdManagerConnection.setConnectionFactory { _, _ -> mockConnection }
+
+      val activateJob = async(start = CoroutineStart.UNDISPATCHED) { handle.activate(projectRule.project) }
+
+      // While activate() is waiting for the download, a second concurrent call should be rejected.
+      assertFailsWith<DeviceActionDisabledException> { handle.activate(projectRule.project) }
+      verify(mockConnection, never()).startAvdProcess(anyOrNull(), any(), any(), any())
+
+      // Complete the background download and SDK reload; activate() should rescan and launch the AVD.
+      sdkFixture.repoManager.setLocalPackages(FakeLocalPackage(packagePath))
+
+      activateJob.await()
+      assertThat(handle.state).isInstanceOf(DeviceState.Connected::class.java)
+      verify(mockConnection).startAvdProcess(anyOrNull(), any(), any(), any())
+    } finally {
+      Disposer.dispose(disposable)
+    }
+  }
+
+  @Test
+  fun activateFailsWhenBackgroundSystemImageDownloadFails(): Unit = runBlockingWithTimeout {
+    val packagePath = "system-images;android-34;google_apis;x86_64"
+    val disposable = Disposer.newDisposable()
+    try {
+      val downloadTracker = SdkDownloadTracker()
+      ApplicationManager.getApplication().replaceService(SdkDownloadTracker::class.java, downloadTracker, disposable)
+
+      val avdInfo = missingImageAvdInfo(avdManager.avdRoot, AvdStatus.ERROR_IMAGE_MISSING)
+      avdManager.createAvd(avdInfo)
+      plugin.refreshDevices()
+      yieldUntil { provisioner.devices.value.size == 1 }
+      val handle = provisioner.devices.value[0] as StudioLocalEmulatorDeviceHandle
+
+      val sdkFixture = SdkFixture()
+      val operation = FakePackageOperation(FakeRemotePackage(packagePath), sdkFixture.repoManager)
+      operation.setInstallStatus(PackageOperation.InstallStatus.PREPARING)
+      downloadTracker.track(operation)
+
+      yieldUntil { handle.state.status == "Downloading system image..." }
+
+      val mockConnection = mock<AvdManagerConnection>()
+      AvdManagerConnection.setConnectionFactory { _, _ -> mockConnection }
+
+      val activateResult = async(start = CoroutineStart.UNDISPATCHED) { runCatching { handle.activate(projectRule.project) } }
+      assertFailsWith<DeviceActionDisabledException> { handle.activate(projectRule.project) }
+
+      operation.setInstallStatus(PackageOperation.InstallStatus.FAILED)
+
+      val exception = activateResult.await().exceptionOrNull()
+      assertThat(exception).isInstanceOf(DeviceActionException::class.java)
+      assertThat(exception?.message).isEqualTo("Failed to download system image for Missing Image Device.")
+      verify(mockConnection, never()).startAvdProcess(anyOrNull(), any(), any(), any())
+    } finally {
+      Disposer.dispose(disposable)
+    }
+  }
 
   private fun missingImageAvdInfo(avdRoot: Path, status: AvdStatus) =
     AvdInfo(
