@@ -46,6 +46,7 @@ import com.google.idea.blaze.base.settings.BlazeUserSettings
 import com.google.idea.blaze.base.sync.SyncListener
 import com.google.idea.blaze.base.sync.SyncMode
 import com.google.idea.blaze.base.sync.SyncResult
+import com.google.idea.blaze.base.sync.status.BlazeSyncStatus
 import com.google.idea.blaze.base.util.SaveUtil
 import com.google.idea.blaze.common.AtomicFileWriter
 import com.google.idea.blaze.common.Label
@@ -135,7 +136,7 @@ constructor(private val project: Project, private val coroutineScope: CoroutineS
   private var lastProjectUpdateFromSnapshot: QuerySyncProjectSnapshot = QuerySyncProjectSnapshot.EMPTY
   private var lastProjectUpdateFromArtifactState: ArtifactTracker.State = ArtifactTracker.State.EMPTY
 
-  private val syncStatus: QuerySyncStatus = QuerySyncStatus(project)
+  @Volatile private var currentOperation: OperationType? = null
   val fileListener: QuerySyncAsyncFileListener = QuerySyncAsyncFileListener.createAndListen(project, this)
   private val cacheCleaner: CacheCleaner = CacheCleaner(project)
 
@@ -475,7 +476,7 @@ constructor(private val project: Project, private val coroutineScope: CoroutineS
     operation: QuerySyncOperation,
     contextScope: suspend (suspend (BlazeContext) -> Unit) -> Boolean,
   ): Boolean {
-    syncStatus.operationStarted(operation.operationType)
+    currentOperation = operation.operationType
     statsScope?.builder?.setTaskOrigin(taskOrigin)
     return runCatching {
         contextScope { context ->
@@ -488,19 +489,24 @@ constructor(private val project: Project, private val coroutineScope: CoroutineS
       }
       .fold(
         onSuccess = { operationSucceeded ->
-          syncStatus.operationEnded(if (operationSucceeded) SyncResult.SUCCESS else SyncResult.FAILURE)
+          operationEnded(if (operationSucceeded) SyncResult.SUCCESS else SyncResult.FAILURE)
           operationSucceeded
         },
         onFailure = { throwable ->
           if (throwable is CancellationException) {
-            syncStatus.operationEnded(SyncResult.CANCELLED)
+            operationEnded(SyncResult.CANCELLED)
           } else {
-            syncStatus.operationEnded(SyncResult.FAILURE)
+            operationEnded(SyncResult.FAILURE)
             logger.error("Sync failed", throwable)
           }
           false
         },
       )
+  }
+
+  private fun operationEnded(result: SyncResult) {
+    currentOperation = null
+    BlazeSyncStatus.getInstance(project).syncEnded(result)
   }
 
   suspend fun bazelOutputToolWindowScope(
@@ -935,9 +941,9 @@ constructor(private val project: Project, private val coroutineScope: CoroutineS
     }
   }
 
-  fun operationInProgress(): Boolean = syncStatus.operationInProgress()
+  fun operationInProgress(): Boolean = currentOperation != null
 
-  fun currentOperation(): Optional<OperationType> = syncStatus.currentOperation()
+  fun currentOperation(): Optional<OperationType> = Optional.ofNullable(currentOperation)
 
   fun isProjectFileAddedSinceSync(absolutePath: Path): Optional<Boolean> {
     return loadedProject?.projectFileAddedSinceSync(absolutePath) ?: Optional.empty()
