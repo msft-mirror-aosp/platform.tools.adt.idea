@@ -21,6 +21,7 @@ import com.android.ide.common.gradle.Module as ExternalModule
 import com.android.ide.common.gradle.RichVersion
 import com.android.ide.common.repository.AgpVersion
 import com.android.ide.common.repository.WellKnownMavenArtifactId
+import com.android.ide.common.util.PathString
 import com.android.manifmerger.ManifestSystemProperty
 import com.android.projectmodel.ExternalAndroidLibrary
 import com.android.tools.idea.concurrency.transform
@@ -57,7 +58,6 @@ import com.android.tools.idea.projectsystem.RegisteredDependencyCompatibilityRes
 import com.android.tools.idea.projectsystem.RegisteredDependencyId
 import com.android.tools.idea.projectsystem.RegisteredDependencyQueryId
 import com.android.tools.idea.projectsystem.RegisteringModuleSystem
-import com.android.tools.idea.projectsystem.SampleDataDirectoryProvider
 import com.android.tools.idea.projectsystem.ScopeType
 import com.android.tools.idea.projectsystem.SourceSetModuleClassFileFinder.CompileRootsScope
 import com.android.tools.idea.projectsystem.TestArtifactSearchScopes
@@ -94,6 +94,7 @@ import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
 import com.intellij.util.text.nullize
 import java.io.File
+import java.io.IOException
 import java.nio.file.Path
 import org.jetbrains.android.dom.manifest.getPrimaryManifestXml
 import org.jetbrains.android.facet.AndroidFacet
@@ -114,22 +115,11 @@ data class GradleRegisteredDependencyId(val dependency: Dependency) : Registered
   override fun toString(): String = dependency.toString()
 }
 
-class GradleModuleSystem
-private constructor(
+class GradleModuleSystem(
   override val module: Module,
   private val projectBuildModelHandler: ProjectBuildModelHandler,
   private val moduleHierarchyProvider: ModuleHierarchyProvider,
-  holderModule: Module,
-) :
-  AndroidModuleSystem,
-  RegisteringModuleSystem<GradleRegisteredDependencyQueryId, GradleRegisteredDependencyId>,
-  SampleDataDirectoryProvider by MainContentRootSampleDataDirectoryProvider(holderModule) {
-
-  constructor(
-    module: Module,
-    projectBuildModelHandler: ProjectBuildModelHandler,
-    moduleHierarchyProvider: ModuleHierarchyProvider,
-  ) : this(module, projectBuildModelHandler, moduleHierarchyProvider, module.getHolderModule())
+) : AndroidModuleSystem, RegisteringModuleSystem<GradleRegisteredDependencyQueryId, GradleRegisteredDependencyId> {
 
   override val androidModel: GradleAndroidModel?
     get() = module.project.workspaceModel.currentSnapshot.getGradleAndroidModel(module)
@@ -709,6 +699,13 @@ private constructor(
     }
 
   override fun getHolderModule(): Module = module.getHolderModule()
+
+  override fun getSampleDataDirectory(): PathString? =
+    MainContentRootSampleDataDirectoryProvider(module.getHolderModule()).getSampleDataDirectory()
+
+  @Throws(IOException::class)
+  override fun getOrCreateSampleDataDirectory(): PathString? =
+    MainContentRootSampleDataDirectoryProvider(module.getHolderModule()).getOrCreateSampleDataDirectory()
 
   override fun isValidForAndroidRunConfiguration() =
     when (type) {

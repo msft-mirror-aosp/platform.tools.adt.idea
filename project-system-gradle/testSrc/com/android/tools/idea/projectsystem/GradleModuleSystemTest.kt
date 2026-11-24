@@ -38,6 +38,7 @@ import com.android.tools.idea.projectsystem.gradle.GradleModuleSystem
 import com.android.tools.idea.projectsystem.gradle.GradleProjectPath
 import com.android.tools.idea.projectsystem.gradle.ProjectBuildModelHandler
 import com.android.tools.idea.projectsystem.gradle.toSourceSetPath
+import com.android.tools.idea.res.MainContentRootSampleDataDirectoryProvider
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.testing.IdeComponents
 import com.android.tools.idea.testing.onEdt
@@ -59,6 +60,7 @@ import org.junit.Test
 import org.mockito.Mockito
 import org.mockito.Mockito.times
 import org.mockito.kotlin.any
+import org.mockito.kotlin.verifyNoInteractions
 import org.mockito.kotlin.whenever
 
 /**
@@ -237,6 +239,37 @@ class GradleModuleSystemTest {
 
     runWriteAction { ModuleManager.getInstance(project).disposeModule(mainModule) }
     assertThat(moduleSystem.androidModel).isNull()
+  }
+
+  @Test
+  fun testInitDoesNotInteractWithModuleOrDependencies() {
+    val mockModule = Mockito.mock(Module::class.java)
+    val mockBuildModelHandler = Mockito.mock(ProjectBuildModelHandler::class.java)
+    val mockHierarchyProvider = Mockito.mock(ModuleHierarchyProvider::class.java)
+
+    GradleModuleSystem(mockModule, mockBuildModelHandler, mockHierarchyProvider)
+
+    verifyNoInteractions(mockModule, mockBuildModelHandler, mockHierarchyProvider)
+  }
+
+  @Test
+  fun testGetSampleDataDirectoryResolvesHolderModuleDynamically() {
+    val holderModule = projectRule.module
+    val expectedSampleDataDir = MainContentRootSampleDataDirectoryProvider(holderModule).getSampleDataDirectory()
+    assertThat(expectedSampleDataDir).isNotNull()
+
+    val mainModule = runWriteAction {
+      ModuleManager.getInstance(project).newModule(project.basePath + "/app.sample.main.iml", JavaModuleType.getModuleType().id)
+    }
+    val moduleSystem = GradleModuleSystem(mainModule, ProjectBuildModelHandler(project), moduleHierarchyProviderStub)
+    assertThat(moduleSystem.getSampleDataDirectory()).isNull()
+
+    val holderPath = GradleHolderProjectPath("/project", ":app")
+    attachGradleProjectPath(holderModule, holderPath)
+    attachGradleProjectPath(mainModule, holderPath.toSourceSetPath(IdeModuleWellKnownSourceSet.MAIN))
+    setAndroidModelEntity(holderModule, createMockAndroidModel(holderModule))
+
+    assertThat(moduleSystem.getSampleDataDirectory()).isEqualTo(expectedSampleDataDir)
   }
 
   private fun attachGradleProjectPath(module: Module, path: GradleProjectPath) {
