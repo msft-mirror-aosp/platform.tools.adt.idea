@@ -31,7 +31,10 @@ import com.google.idea.blaze.base.scope.BlazeContext;
 import com.google.idea.blaze.base.scope.output.IssueOutput;
 import com.google.idea.blaze.base.settings.Blaze;
 import com.google.idea.blaze.base.sync.SyncListener;
+import com.google.idea.blaze.base.sync.SyncResult;
+import com.google.idea.blaze.base.ui.problems.BuildTasksProblemsView;
 import com.intellij.openapi.application.ApplicationManager;
+import com.intellij.openapi.application.ReadAction;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.progress.ProgressManager;
@@ -83,9 +86,10 @@ public class BuildLanguageSpecProviderImpl implements BuildLanguageSpecProvider 
     return blazeRelease;
   }
 
-  private void fetchLanguageSpecIfNeeded(BlazeContext context) {
+  private void fetchLanguageSpecIfNeeded() {
     // Invocations are run in a separate context as the info commands are not crucial or useful for
     // the core sync query.
+    String buildSystemName = Blaze.buildSystemName(project);
     BlazeContext fetchContext = BlazeContext.create();
     ListenableFuture<String> releaseFuture = fetchBlazeRelease(fetchContext);
 
@@ -108,11 +112,9 @@ public class BuildLanguageSpecProviderImpl implements BuildLanguageSpecProvider 
                     @Override
                     public void onFailure(Throwable throwable) {
                       logger.warn("Failed to fetch build language spec", throwable);
-                      context.output(
-                          IssueOutput.error(
-                                  "Failed to obtain Build language spec. Build language support may"
-                                      + " be limited.")
-                              .build());
+                      reportProblem(
+                          "Failed to obtain Build language spec. Build language support may"
+                              + " be limited.");
                     }
                   },
                   BlazeExecutor.getInstance().getExecutor());
@@ -122,15 +124,23 @@ public class BuildLanguageSpecProviderImpl implements BuildLanguageSpecProvider 
           @Override
           public void onFailure(Throwable throwable) {
             logger.warn("Could not fetch blaze version", throwable);
-            context.output(
-                IssueOutput.error(
-                        String.format(
-                            "Failed to obtain %s version. Build language support may be limited.",
-                            Blaze.buildSystemName(project)))
-                    .build());
+            reportProblem(
+                String.format(
+                    "Failed to obtain %s version. Build language support may be limited.",
+                    buildSystemName));
           }
         },
         BlazeExecutor.getInstance().getExecutor());
+  }
+
+  private void reportProblem(String message) {
+    ReadAction.run(
+        () -> {
+          if (!project.isDisposed()) {
+            BuildTasksProblemsView.getInstance(project)
+                .addMessage(IssueOutput.error(message).build(), null);
+          }
+        });
   }
 
   private ListenableFuture<BuildLanguageSpec> fetchBuildLanguageSpec(BlazeContext context) {
@@ -173,7 +183,7 @@ public class BuildLanguageSpecProviderImpl implements BuildLanguageSpecProvider 
 
     // Callback is specific to query sync
     @Override
-    public void afterQuerySync(Project project, BlazeContext context) {
+    public void afterQuerySync(Project project, SyncResult syncResult) {
       if (ApplicationManager.getApplication().isUnitTestMode()) {
         return;
       }
@@ -195,7 +205,7 @@ public class BuildLanguageSpecProviderImpl implements BuildLanguageSpecProvider 
               new Backgroundable(project, "Fetching BUILD language spec") {
                 @Override
                 public void run(@NotNull ProgressIndicator progressIndicator) {
-                  provider.fetchLanguageSpecIfNeeded(context);
+                  provider.fetchLanguageSpecIfNeeded();
                 }
               });
     }

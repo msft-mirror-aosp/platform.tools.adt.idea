@@ -21,7 +21,6 @@ import com.android.annotations.VisibleForTesting;
 import com.android.tools.idea.projectsystem.ProjectSystemSyncManager;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
-import com.google.idea.blaze.base.scope.BlazeContext;
 import com.google.idea.blaze.base.sync.SyncListener;
 import com.google.idea.blaze.base.sync.status.BlazeSyncStatus;
 import com.intellij.openapi.project.Project;
@@ -51,7 +50,8 @@ public class BlazeProjectSystemSyncManager implements ProjectSystemSyncManager {
   }
 
   @Override
-  public ListenableFuture<SyncResult> requestSyncProject(ProjectSystemSyncManager.SyncReason reason) {
+  public ListenableFuture<SyncResult> requestSyncProject(
+      ProjectSystemSyncManager.SyncReason reason) {
     return Futures.immediateFuture(SyncResult.UNKNOWN);
   }
 
@@ -81,16 +81,10 @@ public class BlazeProjectSystemSyncManager implements ProjectSystemSyncManager {
 
     /** Called after sync. Only used in new query-sync * */
     @Override
-    public void afterQuerySync(Project project, BlazeContext context) {
+    public void afterQuerySync(
+        Project project, com.google.idea.blaze.base.sync.SyncResult syncResult) {
       LastSyncResultCache lastSyncResultCache = LastSyncResultCache.getInstance(project);
-
-      if (context.isCancelled()) {
-        lastSyncResultCache.lastSyncResult = SyncResult.CANCELLED;
-      } else if (context.hasErrors()) {
-        lastSyncResultCache.lastSyncResult = SyncResult.FAILURE;
-      } else {
-        lastSyncResultCache.lastSyncResult = SyncResult.SUCCESS;
-      }
+      lastSyncResultCache.lastSyncResult = convertToProjectSystemSyncResult(syncResult);
 
       project
           .getMessageBus()

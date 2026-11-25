@@ -578,9 +578,15 @@ constructor(private val project: Project, private val coroutineScope: CoroutineS
       // that actually matters to them. Unfortunately those listeners make various assumptions about
       // what normally happens when a project is
       // opened etc. so publishing events on actual change only might not be safe.
+      val syncResult =
+        when {
+          context.isCancelled -> SyncResult.CANCELLED
+          context.hasErrors() -> SyncResult.FAILURE
+          else -> SyncResult.SUCCESS
+        }
       for (syncListener in SyncListener.EP_NAME.extensions) {
         // A query sync specific callback.
-        syncListener.afterQuerySync(project, context)
+        syncListener.afterQuerySync(project, syncResult)
       }
     }
   }

@@ -17,7 +17,6 @@ package com.google.idea.blaze.base.sync;
 
 import com.google.common.collect.ImmutableSet;
 import com.google.idea.blaze.base.model.BlazeProjectData;
-import com.google.idea.blaze.base.scope.BlazeContext;
 import com.intellij.openapi.extensions.ExtensionPointName;
 import com.intellij.openapi.project.Project;
 
@@ -35,7 +34,7 @@ public interface SyncListener {
       SyncResult syncResult) {}
 
   /** Called after sync. Only used in new query-sync * */
-  default void afterQuerySync(Project project, BlazeContext context) {}
+  default void afterQuerySync(Project project, SyncResult syncResult) {}
 
   /** Called before sync. Only used in new query-sync * */
   default void onQuerySyncStart(Project project) {}

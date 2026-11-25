@@ -17,8 +17,8 @@ package com.google.idea.blaze.base.syncstatus;
 
 import com.google.idea.blaze.base.model.primitives.WorkspaceRoot;
 import com.google.idea.blaze.base.qsync.QuerySyncManager;
-import com.google.idea.blaze.base.scope.BlazeContext;
 import com.google.idea.blaze.base.sync.SyncListener;
+import com.google.idea.blaze.base.sync.SyncResult;
 import com.google.idea.blaze.common.Label;
 import com.google.idea.blaze.qsync.QuerySyncProjectSnapshot;
 import com.google.idea.common.experiments.BoolExperiment;
@@ -107,7 +107,7 @@ public class QuerySyncNodeDecorator implements ProjectViewNodeDecorator {
     }
 
     @Override
-    public void afterQuerySync(Project project, BlazeContext context) {
+    public void afterQuerySync(Project project, SyncResult syncResult) {
       updatePane(project);
     }
   }
