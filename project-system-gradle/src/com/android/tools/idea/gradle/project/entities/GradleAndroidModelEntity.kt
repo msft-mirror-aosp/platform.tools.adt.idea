@@ -20,8 +20,8 @@ import com.android.tools.idea.gradle.model.impl.IdeVariantImpl
 import com.android.tools.idea.gradle.project.model.GradleAndroidDependencyModel
 import com.android.tools.idea.gradle.project.model.GradleAndroidModel
 import com.android.tools.idea.gradle.project.model.GradleAndroidModelImpl
-import com.android.tools.idea.projectsystem.gradle.getHolderModule
-import com.android.tools.idea.projectsystem.gradle.isLinkedAndroidModule
+import com.android.tools.idea.projectsystem.gradle.ResolvedLinkedAndroidModule
+import com.android.tools.idea.projectsystem.gradle.resolveLinkedAndroidModule
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.util.NlsSafe
 import com.intellij.platform.workspace.jps.entities.ModuleEntity
@@ -80,19 +80,23 @@ internal fun attachDependenciesToModuleEntity(
 
 internal val ModuleEntity.gradleAndroidModel: GradleAndroidModelEntity? by WorkspaceEntity.extension()
 
-fun EntityStorage.getGradleAndroidModel(module: Module): GradleAndroidModel? {
-  if (!module.isLinkedAndroidModule(this)) return null
-  return getGradleAndroidModelForHolder(module.getHolderModule(this))
-}
+fun EntityStorage.getGradleAndroidModel(module: Module): GradleAndroidModel? =
+  when (val resolved = module.resolveLinkedAndroidModule(this)) {
+    null -> null
+    is ResolvedLinkedAndroidModule.FromStorage -> resolved.gradleAndroidModelEntity.toGradleAndroidModel()
+    is ResolvedLinkedAndroidModule.FromUserData -> getGradleAndroidModelForHolder(resolved.holderModule)
+  }
 
 internal fun EntityStorage.getGradleAndroidModelForHolder(holderModule: Module): GradleAndroidModel? {
   val moduleEntity = holderModule.findModuleEntity(this) ?: return null
   val gradleAndroidModelEntity = moduleEntity.gradleAndroidModel ?: return null
-
-  return gradleAndroidModelEntity.resolvedVariant?.let { variant ->
-    GradleAndroidDependencyModel.createWithSingleVariant(gradleAndroidModelEntity.gradleAndroidModel, variant)
-  } ?: gradleAndroidModelEntity.gradleAndroidModel
+  return gradleAndroidModelEntity.toGradleAndroidModel()
 }
+
+private fun GradleAndroidModelEntity.toGradleAndroidModel(): GradleAndroidModel =
+  resolvedVariant?.let { variant ->
+    GradleAndroidDependencyModel.createWithSingleVariant(gradleAndroidModel, variant)
+  } ?: gradleAndroidModel
 
 private fun createNewEntity(
   storage: MutableEntityStorage,

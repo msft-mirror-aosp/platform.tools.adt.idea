@@ -15,28 +15,92 @@
  */
 package com.android.tools.idea.gradle.project.entities
 
+import com.android.tools.idea.gradle.model.impl.IdeModuleSourceSetImpl
+import com.android.tools.idea.gradle.model.impl.IdeModuleWellKnownSourceSet
+import com.android.tools.idea.gradle.model.impl.IdeVariantCoreImpl
 import com.android.tools.idea.gradle.model.impl.IdeVariantImpl
+import com.android.tools.idea.gradle.project.model.GradleAndroidDependencyModel
 import com.android.tools.idea.gradle.project.model.GradleAndroidModelImpl
+import com.android.tools.idea.projectsystem.gradle.GradleHolderProjectPath
+import com.android.tools.idea.projectsystem.gradle.GradleProjectPath
+import com.android.tools.idea.projectsystem.gradle.LINKED_ANDROID_GRADLE_MODULE_GROUP
+import com.android.tools.idea.projectsystem.gradle.LinkedAndroidGradleModuleGroup
+import com.android.tools.idea.projectsystem.gradle.toSourceSetPath
+import com.android.tools.idea.testing.AndroidProjectRule
+import com.android.tools.idea.testing.onEdt
 import com.google.common.truth.Truth.assertThat
+import com.intellij.openapi.application.runWriteAction
+import com.intellij.openapi.module.JavaModuleType
+import com.intellij.openapi.module.Module
+import com.intellij.openapi.module.ModuleManager
+import com.intellij.openapi.module.ModulePointer
+import com.intellij.openapi.module.ModulePointerManager
+import com.intellij.platform.backend.workspace.WorkspaceModel
 import com.intellij.platform.workspace.jps.entities.ModuleEntity
 import com.intellij.platform.workspace.jps.entities.ModuleId
 import com.intellij.platform.workspace.jps.entities.modifyModuleEntity
 import com.intellij.platform.workspace.storage.EntitySource
 import com.intellij.platform.workspace.storage.MutableEntityStorage
+import com.intellij.testFramework.RunsInEdt
+import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.junit.runners.JUnit4
 import org.mockito.Mockito.mock
+import org.mockito.Mockito.verifyNoInteractions
 import org.mockito.Mockito.`when`
 
+@RunsInEdt
 @RunWith(JUnit4::class)
 class GradleAndroidModelEntityTest {
 
+  @get:Rule val projectRule = AndroidProjectRule.onDisk().onEdt()
+
+  private val project
+    get() = projectRule.project
+
   private object TestEntitySource : EntitySource
+
+  private fun createExtraModule(name: String): Module = runWriteAction {
+    ModuleManager.getInstance(project).newModule(project.basePath + "/$name.iml", JavaModuleType.getModuleType().id)
+  }
+
+  private fun attachGradleProjectPath(module: Module, path: GradleProjectPath) {
+    runWriteAction {
+      WorkspaceModel.getInstance(project).updateProjectModel("Attach GradleProjectPath") { storage ->
+        val moduleEntity = storage.resolve(ModuleId(module.name))!!
+        storage.modifyModuleEntity(moduleEntity) {
+          this.gradleProjectPath = GradleProjectPathEntity(path, GradleProjectPathEntitySource)
+        }
+      }
+    }
+  }
+
+  private fun attachAndroidModelEntity(
+    holderModule: Module,
+    model: GradleAndroidModelImpl,
+    resolvedVariant: IdeVariantImpl? = null,
+  ) {
+    runWriteAction {
+      WorkspaceModel.getInstance(project).updateProjectModel("Attach GradleAndroidModel") { storage ->
+        val moduleEntity = storage.resolve(ModuleId(holderModule.name))!!
+        storage.modifyModuleEntity(moduleEntity) {
+          this.gradleAndroidModel =
+            GradleAndroidModelEntity(gradleAndroidModel = model, entitySource = moduleEntity.entitySource) {
+              this.resolvedVariant = resolvedVariant
+            }
+        }
+      }
+    }
+  }
 
   private fun createMockModel(moduleName: String): GradleAndroidModelImpl {
     val model = mock(GradleAndroidModelImpl::class.java)
+    val mockVariant = mock(IdeVariantCoreImpl::class.java)
+    `when`(mockVariant.testSuiteComponents).thenReturn(emptyList())
     `when`(model.moduleName).thenReturn(moduleName)
+    `when`(model.selectedVariant).thenReturn(mockVariant)
+    `when`(model.selectedVariantName).thenReturn("debug")
     return model
   }
 
@@ -173,5 +237,101 @@ class GradleAndroidModelEntityTest {
     assertThat(id1.hashCode()).isEqualTo(id2.hashCode())
     assertThat(id1).isNotEqualTo(id3)
     assertThat(id1.presentableName).isEqualTo("GradleAndroidModelEntity for app")
+  }
+
+  @Test
+  fun testGetGradleAndroidModelFromStorage() {
+    val holderModule = projectRule.module
+    val mainModule = createExtraModule("app.main")
+    val unitTestModule = createExtraModule("app.unitTest")
+    val androidTestModule = createExtraModule("app.androidTest")
+    val commonMainModule = createExtraModule("app.commonMain")
+    val unlinkedModule = createExtraModule("java.main")
+
+    val holderPath = GradleHolderProjectPath("/project", ":app")
+    attachGradleProjectPath(holderModule, holderPath)
+    attachGradleProjectPath(mainModule, holderPath.toSourceSetPath(IdeModuleWellKnownSourceSet.MAIN))
+    attachGradleProjectPath(unitTestModule, holderPath.toSourceSetPath(IdeModuleWellKnownSourceSet.UNIT_TEST))
+    attachGradleProjectPath(androidTestModule, holderPath.toSourceSetPath(IdeModuleWellKnownSourceSet.ANDROID_TEST))
+    attachGradleProjectPath(commonMainModule, holderPath.toSourceSetPath(IdeModuleSourceSetImpl.wellKnownOrCreate("commonMain")))
+
+    val model = createMockModel(holderModule.name)
+    attachAndroidModelEntity(holderModule, model)
+
+    val holderPtr = mock(ModulePointer::class.java)
+    val mainPtr = mock(ModulePointer::class.java)
+    val unitTestPtr = mock(ModulePointer::class.java)
+    val androidTestPtr = mock(ModulePointer::class.java)
+    val userDataGroup =
+      LinkedAndroidGradleModuleGroup(
+        holder = holderPtr,
+        main = mainPtr,
+        unitTest = unitTestPtr,
+        androidTest = androidTestPtr,
+        testFixtures = null,
+        screenshotTest = null,
+        testSuites = emptyList(),
+      )
+    listOf(holderModule, mainModule, unitTestModule, androidTestModule, commonMainModule).forEach {
+      it.putUserData(LINKED_ANDROID_GRADLE_MODULE_GROUP, userDataGroup)
+    }
+
+    val mockPointerManager = mock(ModulePointerManager::class.java)
+    projectRule.projectRule.replaceProjectService(ModulePointerManager::class.java, mockPointerManager)
+
+    val storage = WorkspaceModel.getInstance(project).currentSnapshot
+    assertThat(storage.getGradleAndroidModel(holderModule)).isSameAs(model)
+    assertThat(storage.getGradleAndroidModel(mainModule)).isSameAs(model)
+    assertThat(storage.getGradleAndroidModel(unitTestModule)).isSameAs(model)
+    assertThat(storage.getGradleAndroidModel(androidTestModule)).isSameAs(model)
+    assertThat(storage.getGradleAndroidModel(commonMainModule)).isNull()
+    assertThat(storage.getGradleAndroidModel(unlinkedModule)).isNull()
+
+    verifyNoInteractions(mockPointerManager, holderPtr, mainPtr, unitTestPtr, androidTestPtr)
+  }
+
+  @Test
+  fun testGetGradleAndroidModelWrapsResolvedVariant() {
+    val holderModule = projectRule.module
+    val mainModule = createExtraModule("app.main")
+    val holderPath = GradleHolderProjectPath("/project", ":app")
+    attachGradleProjectPath(holderModule, holderPath)
+    attachGradleProjectPath(mainModule, holderPath.toSourceSetPath(IdeModuleWellKnownSourceSet.MAIN))
+
+    val model = createMockModel(holderModule.name)
+    val resolvedVariant = mock(IdeVariantImpl::class.java)
+    `when`(resolvedVariant.name).thenReturn("debug")
+    attachAndroidModelEntity(holderModule, model, resolvedVariant = resolvedVariant)
+
+    val storage = WorkspaceModel.getInstance(project).currentSnapshot
+    val result = storage.getGradleAndroidModel(mainModule)
+    assertThat(result).isInstanceOf(GradleAndroidDependencyModel::class.java)
+    assertThat((result as GradleAndroidDependencyModel).selectedVariantWithDependencies).isSameAs(resolvedVariant)
+  }
+
+  @Test
+  fun testGetGradleAndroidModelFromUserDataFallback() {
+    val kmpHolder = createExtraModule("shared")
+    val kmpMain = createExtraModule("shared.androidMain")
+    val pointerManager = ModulePointerManager.getInstance(project)
+    val group =
+      LinkedAndroidGradleModuleGroup(
+        holder = pointerManager.create(kmpHolder),
+        main = pointerManager.create(kmpMain),
+        unitTest = null,
+        androidTest = null,
+        testFixtures = null,
+        screenshotTest = null,
+        testSuites = emptyList(),
+      )
+    attachGradleProjectPath(kmpHolder, GradleHolderProjectPath("/project", ":shared"))
+    val model = createMockModel(kmpHolder.name)
+    attachAndroidModelEntity(kmpHolder, model)
+    kmpHolder.putUserData(LINKED_ANDROID_GRADLE_MODULE_GROUP, group)
+    kmpMain.putUserData(LINKED_ANDROID_GRADLE_MODULE_GROUP, group)
+
+    val storage = WorkspaceModel.getInstance(project).currentSnapshot
+    assertThat(storage.getGradleAndroidModel(kmpHolder)).isSameAs(model)
+    assertThat(storage.getGradleAndroidModel(kmpMain)).isSameAs(model)
   }
 }
