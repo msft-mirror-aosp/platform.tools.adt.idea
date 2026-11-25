@@ -124,9 +124,12 @@ class GradleModuleSystem(
   override val androidModel: GradleAndroidModel?
     get() = module.project.workspaceModel.currentSnapshot.getGradleAndroidModel(module)
 
+  private val gradleAndroidDependencyModel: GradleAndroidDependencyModel?
+    get() = androidModel as? GradleAndroidDependencyModel
+
   override val type: Type
     get() =
-      when (GradleAndroidModel.get(module)?.androidProject?.projectType) {
+      when (androidModel?.androidProject?.projectType) {
         IdeAndroidProjectType.PROJECT_TYPE_APP -> Type.TYPE_APP
         IdeAndroidProjectType.PROJECT_TYPE_ATOM -> Type.TYPE_ATOM
         IdeAndroidProjectType.PROJECT_TYPE_DYNAMIC_FEATURE -> Type.TYPE_DYNAMIC_FEATURE
@@ -214,7 +217,7 @@ class GradleModuleSystem(
       }
 
   fun getDirectDependencies(module: Module): Sequence<Dependency> =
-    GradleAndroidModel.get(module)
+    (if (module == this.module) androidModel else GradleAndroidModel.get(module))
       ?.declaredDependencies
       ?.configurationsToCoordinates
       ?.filter { setOf("implementation", "api").contains(it.key) }
@@ -226,7 +229,7 @@ class GradleModuleSystem(
     AndroidDependenciesCache.getAllAndroidDependencies(module.getMainModule(), true).map(AndroidFacet::getModule)
 
   override fun getAndroidTestDirectResourceModuleDependencies(): List<Module> {
-    val dependencies = GradleAndroidDependencyModel.get(this.module)?.selectedAndroidTestCompileDependencies
+    val dependencies = gradleAndroidDependencyModel?.selectedAndroidTestCompileDependencies
     return dependencies
       ?.libraries
       ?.filterIsInstance<IdeModuleLibrary>()
@@ -248,7 +251,7 @@ class GradleModuleSystem(
   }
 
   private fun getCompileDependenciesFor(module: Module, scope: DependencyScopeType): IdeDependencies? {
-    val gradleModel = GradleAndroidDependencyModel.get(module) ?: return null
+    val gradleModel = (if (module == this.module) gradleAndroidDependencyModel else GradleAndroidDependencyModel.get(module)) ?: return null
     val selectedVariant = gradleModel.selectedVariantWithDependencies
     // A test suite module is built into exactly one artifact, so its own classpath is returned whatever the scope. A test suite module
     // without an artifact (an assets source) has nothing to compile and falls through to the scope.
@@ -269,7 +272,8 @@ class GradleModuleSystem(
 
   private fun getRuntimeDependenciesFor(module: Module, scope: DependencyScopeType): Sequence<IdeDependencies> {
     fun impl(module: Module, scope: DependencyScopeType): Sequence<IdeDependencies> = sequence {
-      val gradleModel = GradleAndroidDependencyModel.get(module)
+      val gradleModel =
+        if (module == this@GradleModuleSystem.module) gradleAndroidDependencyModel else GradleAndroidDependencyModel.get(module)
       if (gradleModel == null) {
         // TODO(b/253476264): Returning an incomplete set of dependencies is highly problematic and should be avoided.
         ClearResourceCacheAfterFirstBuild.getInstance(module.project).setIncompleteRuntimeDependencies()
@@ -380,8 +384,8 @@ class GradleModuleSystem(
   }
 
   override fun getManifestOverrides(): ManifestOverrides {
-    val facet = AndroidFacet.getInstance(module)
-    val androidModel = facet?.let(GradleAndroidModel::get) ?: return ManifestOverrides()
+    val facet = AndroidFacet.getInstance(module) ?: return ManifestOverrides()
+    val androidModel = this.androidModel ?: return ManifestOverrides()
     val directOverrides =
       notNullMapOf(
         ManifestSystemProperty.UsesSdk.MIN_SDK_VERSION to androidModel.minSdkVersion?.apiString,
@@ -411,8 +415,8 @@ class GradleModuleSystem(
   }
 
   override fun getManifestPlaceholders(): Map<String, String> {
-    val facet = AndroidFacet.getInstance(module)
-    val androidModel = facet?.let(GradleAndroidModel::get) ?: return emptyMap()
+    AndroidFacet.getInstance(module) ?: return emptyMap()
+    val androidModel = this.androidModel ?: return emptyMap()
     return androidModel.selectedVariant.manifestPlaceholders
   }
 
@@ -440,13 +444,13 @@ class GradleModuleSystem(
   }
 
   override fun getPackageName(): String? {
-    val facet = AndroidFacet.getInstance(module) ?: return null
-    return GradleAndroidModel.get(facet)?.androidProject?.namespace
+    AndroidFacet.getInstance(module) ?: return null
+    return androidModel?.androidProject?.namespace
   }
 
   override fun getTestPackageName(): String? {
     val facet = AndroidFacet.getInstance(module) ?: return null
-    val gradleAndroidModel = GradleAndroidModel.get(facet)
+    val gradleAndroidModel = androidModel
     val variant = gradleAndroidModel?.selectedVariant ?: return null
     // Only report a test package if the selected variant actually has corresponding androidTest components
     if (variant.deviceTestArtifacts.find { it.name == IdeArtifactName.ANDROID_TEST } == null) return null
@@ -463,7 +467,7 @@ class GradleModuleSystem(
 
   override fun getApplicationIdProvider(): ApplicationIdProvider {
     val androidFacet = AndroidFacet.getInstance(module) ?: error("Cannot find AndroidFacet. Module: ${module.name}")
-    val androidModel = GradleAndroidModel.get(androidFacet) ?: error("Cannot find GradleAndroidModel. Module: ${module.name}")
+    val androidModel = this.androidModel ?: error("Cannot find GradleAndroidModel. Module: ${module.name}")
     val forTests =
       androidFacet.module.isUnitTestModule() ||
         androidFacet.module.isAndroidTestModule() ||
@@ -507,7 +511,7 @@ class GradleModuleSystem(
   override fun getTestArtifactSearchScopes(): TestArtifactSearchScopes = GradleTestArtifactSearchScopes(module)
 
   private inline fun <T> readFromAgpFlags(read: (IdeAndroidGradlePluginProjectFlags) -> T): T? {
-    return GradleAndroidModel.get(module)?.androidProject?.agpFlags?.let(read)
+    return androidModel?.androidProject?.agpFlags?.let(read)
   }
 
   private data class AgpBuildGlobalFlags(val useAndroidX: Boolean, val generateManifestClass: Boolean, val disableAgpUpgradePrompt: Boolean)
@@ -562,7 +566,7 @@ class GradleModuleSystem(
 
   override val codeShrinker: CodeShrinker?
     get() =
-      when (GradleAndroidModel.get(module)?.selectedVariant?.mainArtifact?.codeShrinker) {
+      when (androidModel?.selectedVariant?.mainArtifact?.codeShrinker) {
         com.android.tools.idea.gradle.model.CodeShrinker.PROGUARD -> CodeShrinker.PROGUARD
         com.android.tools.idea.gradle.model.CodeShrinker.R8 -> CodeShrinker.R8
         null -> null
@@ -580,14 +584,14 @@ class GradleModuleSystem(
 
   override fun getTestLibrariesInUse(): TestLibraries? {
     val androidTestArtifact =
-      GradleAndroidDependencyModel.get(module)?.selectedVariantWithDependencies?.deviceTestArtifacts?.find {
+      gradleAndroidDependencyModel?.selectedVariantWithDependencies?.deviceTestArtifacts?.find {
         it.name == IdeArtifactName.ANDROID_TEST
       } ?: return null
     return TestLibraries.newBuilder().also { recordTestLibraries(it, androidTestArtifact) }.build()
   }
 
   override fun getDynamicFeatureModules(): List<Module> {
-    val project = GradleAndroidModel.get(module)?.androidProject ?: return emptyList()
+    val project = androidModel?.androidProject ?: return emptyList()
     val ourGradleProjectPath = module.getGradleProjectPath()?.toHolder() ?: return emptyList()
     return project.dynamicFeatures.map { dynamicFeature ->
       val dynamicFeatureGradleProjectPath = ourGradleProjectPath.copy(path = dynamicFeature)
@@ -596,7 +600,7 @@ class GradleModuleSystem(
   }
 
   override fun getBaseFeatureModule(): Module? {
-    val ideAndroidProject = GradleAndroidModel.get(module)?.androidProject ?: return null
+    val ideAndroidProject = androidModel?.androidProject ?: return null
     return ideAndroidProject.baseFeature
       ?.let { baseFeature -> gradleProjectPath.toHolder().copy(path = baseFeature) }
       ?.resolveIn(module.project)
@@ -609,13 +613,13 @@ class GradleModuleSystem(
     get() = readFromAgpFlags { it.mlModelBindingEnabled } ?: false
 
   override val isViewBindingEnabled: Boolean
-    get() = GradleAndroidModel.get(module)?.androidProject?.viewBindingOptions?.enabled ?: false
+    get() = androidModel?.androidProject?.viewBindingOptions?.enabled ?: false
 
   override val isDataBindingEnabled: Boolean
-    get() = GradleAndroidModel.get(module)?.androidProject?.agpFlags?.dataBindingEnabled ?: false
+    get() = androidModel?.androidProject?.agpFlags?.dataBindingEnabled ?: false
 
   override val isKaptEnabled: Boolean
-    get() = GradleAndroidModel.get(module)?.androidProject?.isKaptEnabled == true || module.gradleModuleModel?.hasLegacyKaptPlugin == true
+    get() = androidModel?.androidProject?.isKaptEnabled == true || module.gradleModuleModel?.hasLegacyKaptPlugin == true
 
   override val applicationRClassConstantIds: Boolean
     get() = readFromAgpFlags { it.applicationRClassConstantIds } ?: true
@@ -640,19 +644,19 @@ class GradleModuleSystem(
     get() = moduleHierarchyProvider.submodules
 
   override val desugarLibraryConfigFilesKnown: Boolean
-    get() = GradleAndroidModel.get(module)?.agpVersion?.let { it >= (DESUGAR_LIBRARY_CONFIG_MINIMUM_AGP_VERSION) } ?: false
+    get() = androidModel?.agpVersion?.let { it >= (DESUGAR_LIBRARY_CONFIG_MINIMUM_AGP_VERSION) } ?: false
 
   override val desugarLibraryConfigFilesNotKnownUserMessage: String?
     get() =
       when {
-        GradleAndroidModel.get(module) == null -> "Not supported for non-Android modules."
+        androidModel == null -> "Not supported for non-Android modules."
         !desugarLibraryConfigFilesKnown ->
           "Only supported for projects using Android Gradle plugin '$DESUGAR_LIBRARY_CONFIG_MINIMUM_AGP_VERSION' and above."
         else -> null
       }
 
   val desugarLibraryConfigFiles: List<Path>
-    get() = GradleAndroidModel.get(module)?.androidProject?.desugarLibraryConfigFiles?.map { it.toPath() } ?: emptyList()
+    get() = androidModel?.androidProject?.desugarLibraryConfigFiles?.map { it.toPath() } ?: emptyList()
 
   override val disableAgpUpgradePrompt: Boolean
     get() = agpBuildGlobalFlags.disableAgpUpgradePrompt

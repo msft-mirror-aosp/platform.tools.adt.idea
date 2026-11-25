@@ -20,6 +20,9 @@ import com.android.ide.common.gradle.Dependency
 import com.android.ide.common.repository.GoogleMavenArtifactId
 import com.android.tools.idea.gradle.dependencies.GradleDependencyManager
 import com.android.tools.idea.gradle.model.IdeAndroidProject
+import com.android.tools.idea.gradle.model.IdeAndroidProjectType
+import com.android.tools.idea.gradle.model.impl.IdeAndroidGradlePluginProjectFlagsImpl
+import com.android.tools.idea.gradle.model.impl.IdeAndroidProjectImpl
 import com.android.tools.idea.gradle.model.impl.IdeModuleWellKnownSourceSet
 import com.android.tools.idea.gradle.model.impl.IdeVariantCoreImpl
 import com.android.tools.idea.gradle.project.entities.GradleAndroidModelEntity
@@ -36,6 +39,7 @@ import com.android.tools.idea.projectsystem.gradle.GradleDependencyCompatibility
 import com.android.tools.idea.projectsystem.gradle.GradleHolderProjectPath
 import com.android.tools.idea.projectsystem.gradle.GradleModuleSystem
 import com.android.tools.idea.projectsystem.gradle.GradleProjectPath
+import com.android.tools.idea.projectsystem.gradle.GradleProjectSystem
 import com.android.tools.idea.projectsystem.gradle.ProjectBuildModelHandler
 import com.android.tools.idea.projectsystem.gradle.toSourceSetPath
 import com.android.tools.idea.res.MainContentRootSampleDataDirectoryProvider
@@ -44,6 +48,7 @@ import com.android.tools.idea.testing.IdeComponents
 import com.android.tools.idea.testing.onEdt
 import com.google.common.truth.Truth.assertThat
 import com.google.common.util.concurrent.Futures
+import com.intellij.facet.FacetManager
 import com.intellij.openapi.application.runWriteAction
 import com.intellij.openapi.module.JavaModuleType
 import com.intellij.openapi.module.Module
@@ -53,6 +58,7 @@ import com.intellij.platform.workspace.jps.entities.ModuleId
 import com.intellij.platform.workspace.jps.entities.modifyModuleEntity
 import com.intellij.testFramework.RunsInEdt
 import org.jetbrains.android.AndroidTestBase
+import org.jetbrains.android.facet.AndroidFacet
 import org.junit.After
 import org.junit.Before
 import org.junit.Rule
@@ -60,6 +66,9 @@ import org.junit.Test
 import org.mockito.Mockito
 import org.mockito.Mockito.times
 import org.mockito.kotlin.any
+import org.mockito.kotlin.never
+import org.mockito.kotlin.spy
+import org.mockito.kotlin.verify
 import org.mockito.kotlin.verifyNoInteractions
 import org.mockito.kotlin.whenever
 
@@ -270,6 +279,48 @@ class GradleModuleSystemTest {
     setAndroidModelEntity(holderModule, createMockAndroidModel(holderModule))
 
     assertThat(moduleSystem.getSampleDataDirectory()).isEqualTo(expectedSampleDataDir)
+  }
+
+  @Test
+  fun testModelQueriesUseSelfWithoutReinvokingGetModuleSystem() {
+    val holderModule = runWriteAction {
+      ModuleManager.getInstance(project).newModule(project.basePath + "/app.wsm.holder.iml", JavaModuleType.getModuleType().id)
+    }
+    val mainModule = runWriteAction {
+      ModuleManager.getInstance(project).newModule(project.basePath + "/app.wsm.main.iml", JavaModuleType.getModuleType().id)
+    }
+    runWriteAction { FacetManager.getInstance(mainModule).addFacet(AndroidFacet.getFacetType(), AndroidFacet.NAME, null) }
+
+    val previousProjectSystem = ProjectSystemService.getInstance(project).projectSystem
+    val spyProjectSystem = spy(GradleProjectSystem(project))
+    ProjectSystemService.getInstance(project).replaceProjectSystemForTests(spyProjectSystem)
+    try {
+      val holderPath = GradleHolderProjectPath("/project", ":wsm")
+      attachGradleProjectPath(holderModule, holderPath)
+      attachGradleProjectPath(mainModule, holderPath.toSourceSetPath(IdeModuleWellKnownSourceSet.MAIN))
+
+      val mockModel = createMockAndroidModel(holderModule)
+      val mockAndroidProject = Mockito.mock(IdeAndroidProjectImpl::class.java)
+      val mockAgpFlags = Mockito.mock(IdeAndroidGradlePluginProjectFlagsImpl::class.java)
+      whenever(mockAgpFlags.usesCompose).thenReturn(true)
+      whenever(mockAndroidProject.projectType).thenReturn(IdeAndroidProjectType.PROJECT_TYPE_APP)
+      whenever(mockAndroidProject.namespace).thenReturn("com.example.wsm")
+      whenever(mockAndroidProject.agpFlags).thenReturn(mockAgpFlags)
+      whenever(mockModel.androidProject).thenReturn(mockAndroidProject)
+      setAndroidModelEntity(holderModule, mockModel)
+
+      val moduleSystem = GradleModuleSystem(mainModule, ProjectBuildModelHandler(project), moduleHierarchyProviderStub)
+      assertThat(moduleSystem.type).isEqualTo(AndroidModuleSystem.Type.TYPE_APP)
+      assertThat(moduleSystem.usesCompose).isTrue()
+      assertThat(moduleSystem.getPackageName()).isEqualTo("com.example.wsm")
+      verify(spyProjectSystem, never()).getModuleSystem(any())
+    } finally {
+      ProjectSystemService.getInstance(project).replaceProjectSystemForTests(previousProjectSystem)
+      runWriteAction {
+        ModuleManager.getInstance(project).disposeModule(mainModule)
+        ModuleManager.getInstance(project).disposeModule(holderModule)
+      }
+    }
   }
 
   private fun attachGradleProjectPath(module: Module, path: GradleProjectPath) {
