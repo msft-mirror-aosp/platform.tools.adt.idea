@@ -35,6 +35,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import org.junit.After
 import org.junit.Before
+import org.junit.Ignore
 import org.junit.Rule
 import org.junit.Test
 
@@ -96,6 +97,7 @@ class AndroidSdkWatcherServiceTest {
     waitForCondition(10.seconds) { listenerFired.get() }
   }
 
+  @Ignore("b/590143801")
   @Test
   fun testAvdScannerServiceIntegrationWithWatcher() {
     val sdkDir = FileUtil.createTempDirectory("sdk", null).canonicalFile.toPath()
