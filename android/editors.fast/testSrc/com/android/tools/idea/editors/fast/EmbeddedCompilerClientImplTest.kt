@@ -52,15 +52,18 @@ import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFileFactory
+import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.LightVirtualFile
 import com.intellij.testFramework.PsiTestUtil
 import com.intellij.testFramework.assertInstanceOf
+import com.intellij.testFramework.runInEdtAndWait
 import com.intellij.util.io.delete
 import com.jetbrains.rd.util.AtomicInteger
 import java.io.File
 import java.net.URLClassLoader
 import java.nio.file.Files
 import java.nio.file.Path
+import java.time.Duration
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.jar.JarEntry
@@ -703,6 +706,7 @@ internal class EmbeddedCompilerClientImplTest {
             .trimIndent(),
         )
         val commonVirtualFile = VfsUtil.findFile(commonSourceIoFile, true)!!
+        waitUntilIndexesAreReady()
 
         readAction {
           assertEquals(commonModule, ModuleUtilCore.findModuleForFile(commonVirtualFile, projectRule.project))
@@ -735,6 +739,7 @@ internal class EmbeddedCompilerClientImplTest {
               updateMergedArguments()
             }
           }
+          waitUntilIndexesAreReady()
           for (bindAndroidContextUpFront in listOf(false, true)) {
             val inMemoryPsiFile = readAction {
               val lightVirtualFile =
@@ -805,6 +810,7 @@ internal class EmbeddedCompilerClientImplTest {
     }
     try {
       val srcVf = VfsUtil.findFile(srcFile, true)!!
+      waitUntilIndexesAreReady()
       val psiFile = readAction { srcVf.toPsiFile(projectRule.project) as KtFile }
       val buildTargetReference = readAction { BuildTargetReference.from(mod, psiFile.virtualFile) }
       val result =
@@ -867,6 +873,13 @@ internal class EmbeddedCompilerClientImplTest {
         }
       updateMergedArguments()
     }
+  }
+
+  // Wait for background scanning (UnindexedFilesScanner) and dumb-mode tasks (such as PushedFilePropertiesUpdater
+  // queued by VfsUtil.findFile(..., refresh = true) and workspace mutations) to finish before compiling, so their
+  // enter/exit write actions cannot cancel ReadAction.computeCancellable inside backendCodeGenForK2 with CompilationAborted.
+  private fun waitUntilIndexesAreReady() {
+    runInEdtAndWait { IndexingTestUtil.waitUntilIndexesAreReady(projectRule.project, Duration.ofMinutes(2)) }
   }
 
   @Test
@@ -978,7 +991,6 @@ internal class EmbeddedCompilerClientImplTest {
         .trimIndent(),
     )
     val commonAppVf = VfsUtil.findFile(commonAppPath, true)!!
-    val commonAppPsi = readAction { commonAppVf.toPsiFile(projectRule.project) as KtFile }
 
     val intermediatePath = intermediateRoot.resolve("com/test/Intermediate.kt")
     Files.createDirectories(intermediatePath.parent)
@@ -994,7 +1006,6 @@ internal class EmbeddedCompilerClientImplTest {
         .trimIndent(),
     )
     val intermediateFileVf = VfsUtil.findFile(intermediatePath, true)!!
-    val intermediatePsi = readAction { intermediateFileVf.toPsiFile(projectRule.project) as KtFile }
 
     val jvmMainPath = jvmRoot.resolve("com/test/DesktopEntry.kt")
     Files.createDirectories(jvmMainPath.parent)
@@ -1010,6 +1021,9 @@ internal class EmbeddedCompilerClientImplTest {
         .trimIndent(),
     )
     val jvmMainFileVf = VfsUtil.findFile(jvmMainPath, true)!!
+    waitUntilIndexesAreReady()
+    val commonAppPsi = readAction { commonAppVf.toPsiFile(projectRule.project) as KtFile }
+    val intermediatePsi = readAction { intermediateFileVf.toPsiFile(projectRule.project) as KtFile }
     val jvmMainPsi = readAction { jvmMainFileVf.toPsiFile(projectRule.project) as KtFile }
 
     readAction {
@@ -1044,6 +1058,7 @@ internal class EmbeddedCompilerClientImplTest {
           isMetadata = expectedIsCommon,
         )
       }
+      waitUntilIndexesAreReady()
       readAction {
         assertEquals(commonPlatform, commonModule.platform)
         assertEquals(expectedIsCommon, commonModule.platform.isCommon())
@@ -1163,6 +1178,7 @@ internal class EmbeddedCompilerClientImplTest {
         .trimIndent(),
     )
     val commonFileVf = VfsUtil.findFile(commonFilePath, true)!!
+    waitUntilIndexesAreReady()
     val commonPsi = readAction { commonFileVf.toPsiFile(projectRule.project) as KtFile }
 
     readAction {
@@ -1244,6 +1260,7 @@ internal class EmbeddedCompilerClientImplTest {
         .trimIndent(),
     )
     val brokenVf = VfsUtil.findFile(brokenPath, true)!!
+    waitUntilIndexesAreReady()
     val brokenPsi = readAction { brokenVf.toPsiFile(projectRule.project) as KtFile }
 
     val outDir = tempFolder.newFolder("kmp_error_line_out").toPath()
@@ -1332,7 +1349,6 @@ internal class EmbeddedCompilerClientImplTest {
         .trimIndent(),
     )
     val expectVf = VfsUtil.findFile(expectFilePath, true)!!
-    val expectPsi = readAction { expectVf.toPsiFile(projectRule.project) as KtFile }
 
     val callerFilePath = commonRoot.resolve("com/test/PlatformCaller.kt")
     Files.writeString(
@@ -1345,6 +1361,8 @@ internal class EmbeddedCompilerClientImplTest {
         .trimIndent(),
     )
     val callerVf = VfsUtil.findFile(callerFilePath, true)!!
+    waitUntilIndexesAreReady()
+    val expectPsi = readAction { expectVf.toPsiFile(projectRule.project) as KtFile }
     val callerPsi = readAction { callerVf.toPsiFile(projectRule.project) as KtFile }
 
     // 1) Compiling a commonMain file that calls an expect function declared in another commonMain file.
@@ -1447,6 +1465,7 @@ internal class EmbeddedCompilerClientImplTest {
         .trimIndent(),
     )
     val callerVf = VfsUtil.findFile(callerPath, true)!!
+    waitUntilIndexesAreReady()
     val callerPsi = readAction { callerVf.toPsiFile(projectRule.project) as KtFile }
 
     readAction {
