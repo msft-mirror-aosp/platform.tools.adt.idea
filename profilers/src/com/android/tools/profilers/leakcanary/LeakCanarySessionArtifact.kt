@@ -98,10 +98,17 @@ class LeakCanarySessionArtifact(
       val artifacts: MutableList<SessionArtifact<*>> = mutableListOf()
       val leakInfoEvents =
         LeakCanaryModel.getLeakCanaryAnalysisInfo(
-          profilers.client,
-          session,
-          Range(session.startTimestamp.toDouble(), session.endTimestamp.toDouble()),
-        )
+            profilers.client,
+            session,
+            Range(session.startTimestamp.toDouble(), session.endTimestamp.toDouble()),
+          )
+          .filter { event ->
+            // Skip end events of recordings that started before this session. If a new task starts before the old one has stopped, the
+            // old recording's end event can land in this session's range. That recording belongs to the old session.
+            // A start time of 0 means it is unknown (e.g. the end event made when the device disconnects), so keep those events.
+            val recordingStart = event.leakCanaryAnalysisStatus.analysisEnded.startTimestamp
+            recordingStart == 0L || recordingStart >= session.startTimestamp
+          }
       leakInfoEvents.forEach { leakEvent ->
         run {
           artifacts.add(LeakCanarySessionArtifact(profilers, session, sessionMetadata, leakEvent.leakCanaryAnalysisStatus.analysisEnded))

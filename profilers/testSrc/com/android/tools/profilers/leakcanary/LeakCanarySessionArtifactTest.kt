@@ -203,6 +203,65 @@ class LeakCanarySessionArtifactTest : WithFakeTimer {
     assertEquals(0, leakCanarySessionArtifact.size)
   }
 
+  @Test
+  fun `getSessionArtifacts - skips the end event of a recording that started before the session`() {
+    // The previous recording started before this session, but its end event came after this session started.
+    addLeakCanaryInfoEndEvent(eventTimestamp = timeStamp2, recordingStart = timeStamp1)
+    // This session's own recording.
+    addLeakCanaryInfoEndEvent(eventTimestamp = timeStamp4, recordingStart = timeStamp3)
+    val mockSession =
+      Common.Session.newBuilder()
+        .setStartTimestamp(timeStamp2 - 1)
+        .setPid(FakeTransportService.FAKE_PROCESS.pid)
+        .setStreamId(FakeTransportService.FAKE_DEVICE_ID)
+        .setEndTimestamp(timeStamp5)
+        .build()
+    val leakCanarySessionArtifacts =
+      LeakCanarySessionArtifact.getSessionArtifacts(profilers, mockSession, SessionMetaData.getDefaultInstance())
+    assertEquals(1, leakCanarySessionArtifacts.size)
+    assertEquals(timeStamp3, (leakCanarySessionArtifacts[0] as LeakCanarySessionArtifact).artifactProto.startTimestamp)
+  }
+
+  @Test
+  fun `getSessionArtifacts - ongoing session skips a late end event of the previous recording`() {
+    // The previous recording started before this session, but its end event came after this session started.
+    addLeakCanaryInfoEndEvent(eventTimestamp = timeStamp2, recordingStart = timeStamp1)
+    val mockSession =
+      Common.Session.newBuilder()
+        .setStartTimestamp(timeStamp2 - 1)
+        .setPid(FakeTransportService.FAKE_PROCESS.pid)
+        .setStreamId(FakeTransportService.FAKE_DEVICE_ID)
+        .setEndTimestamp(Long.MAX_VALUE)
+        .build()
+    val leakCanarySessionArtifacts =
+      LeakCanarySessionArtifact.getSessionArtifacts(profilers, mockSession, SessionMetaData.getDefaultInstance())
+    assertEquals(0, leakCanarySessionArtifacts.size)
+  }
+
+  @Test
+  fun `getSessionArtifacts - keeps the end event made on device disconnect`() {
+    // On disconnect, the transport proxy ends open groups with an end event that has no LeakCanary data, so its start time is 0.
+    transportService.addEventToStream(
+      FakeTransportService.FAKE_DEVICE_ID,
+      Common.Event.newBuilder()
+        .setPid(FakeTransportService.FAKE_PROCESS.pid)
+        .setKind(Common.Event.Kind.LEAKCANARY_ANALYSIS_STATUS)
+        .setIsEnded(true)
+        .setTimestamp(timeStamp3)
+        .build(),
+    )
+    val mockSession =
+      Common.Session.newBuilder()
+        .setStartTimestamp(timeStamp2)
+        .setPid(FakeTransportService.FAKE_PROCESS.pid)
+        .setStreamId(FakeTransportService.FAKE_DEVICE_ID)
+        .setEndTimestamp(timeStamp4)
+        .build()
+    val leakCanarySessionArtifacts =
+      LeakCanarySessionArtifact.getSessionArtifacts(profilers, mockSession, SessionMetaData.getDefaultInstance())
+    assertEquals(1, leakCanarySessionArtifacts.size)
+  }
+
   private fun addLeakCanaryInfoStartEvent() {
     transportService.addEventToStream(
       FakeTransportService.FAKE_DEVICE_ID,
@@ -220,20 +279,20 @@ class LeakCanarySessionArtifactTest : WithFakeTimer {
     )
   }
 
-  private fun addLeakCanaryInfoEndEvent() {
+  private fun addLeakCanaryInfoEndEvent(eventTimestamp: Long = timeStamp3, recordingStart: Long = timeStamp1) {
     transportService.addEventToStream(
       FakeTransportService.FAKE_DEVICE_ID,
       Common.Event.newBuilder()
         .setPid(FakeTransportService.FAKE_PROCESS.pid)
         .setKind(Common.Event.Kind.LEAKCANARY_ANALYSIS_STATUS)
         .setIsEnded(true)
-        .setTimestamp(timeStamp3)
+        .setTimestamp(eventTimestamp)
         .setLeakCanaryAnalysisStatus(
           LeakCanaryAnalysisStatus.newBuilder()
             .setAnalysisEnded(
               LeakCanary.LeakCanaryAnalysisEnded.newBuilder()
-                .setStartTimestamp(timeStamp1)
-                .setEndTimestamp(timeStamp3)
+                .setStartTimestamp(recordingStart)
+                .setEndTimestamp(eventTimestamp)
                 .setStatus(LeakCanary.LeakCanaryAnalysisEnded.Status.SUCCESS)
                 .build()
             )
