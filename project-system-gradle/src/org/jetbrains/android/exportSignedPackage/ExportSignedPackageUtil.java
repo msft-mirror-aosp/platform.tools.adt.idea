@@ -15,6 +15,7 @@
  */
 package org.jetbrains.android.exportSignedPackage;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.intellij.CommonBundle;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.fileChooser.FileChooser;
@@ -53,9 +54,10 @@ public class ExportSignedPackageUtil {
   private ExportSignedPackageUtil() {
   }
 
+  @VisibleForTesting
   @Nullable
   @Unmodifiable
-  private static List<String> loadExistingKeys(@NotNull ApkSigningSettingsForm form) {
+  static List<String> loadExistingKeys(@NotNull ApkSigningSettingsForm form) {
     final String errorPrefix = "Cannot load key store: ";
     InputStream is = null;
     try {

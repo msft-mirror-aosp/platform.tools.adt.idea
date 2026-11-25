@@ -35,6 +35,7 @@ import org.jetbrains.android.exportSignedPackage.GradleSigningInfo
 import org.jetbrains.android.facet.AndroidFacet
 import org.junit.Rule
 import org.junit.Test
+import org.junit.rules.TemporaryFolder
 import org.junit.runner.RunWith
 import org.junit.runners.Parameterized
 
@@ -44,21 +45,24 @@ class ExportSignedPackageWizardSigningTest(
   validStorePassword: Boolean,
   validKeyAlias: Boolean,
   validKeyPassword: Boolean,
+  private val spaceInPath: Boolean,
   private val buildResultHandler: Consumer<ListenableFuture<AssembleInvocationResult>>,
 ) {
   companion object {
     @JvmStatic
-    @Parameterized.Parameters(name = "{0} ValidStorePass {1}, ValidKeyAlias {2}, ValidKeyPass {3}")
+    @Parameterized.Parameters(name = "{0} ValidStorePass {1}, ValidKeyAlias {2}, ValidKeyPass {3}, SpaceInPath {4}")
     fun data() =
       listOf(
-        arrayOf(ExportSignedPackageWizard.BUNDLE, true, true, true, successHandler),
-        arrayOf(ExportSignedPackageWizard.APK, true, true, true, successHandler),
-        arrayOf(ExportSignedPackageWizard.BUNDLE, false, true, true, badStorePassHandler),
-        arrayOf(ExportSignedPackageWizard.APK, false, true, true, badStorePassHandler),
-        arrayOf(ExportSignedPackageWizard.BUNDLE, true, false, true, badKeyAliasHandler),
-        arrayOf(ExportSignedPackageWizard.APK, true, false, true, badKeyAliasHandler),
-        arrayOf(ExportSignedPackageWizard.BUNDLE, true, true, false, badKeyPassHandler),
-        arrayOf(ExportSignedPackageWizard.APK, true, true, false, badKeyPassHandler),
+        arrayOf(ExportSignedPackageWizard.BUNDLE, true, true, true, false, successHandler),
+        arrayOf(ExportSignedPackageWizard.APK, true, true, true, false, successHandler),
+        arrayOf(ExportSignedPackageWizard.BUNDLE, true, true, true, true, successHandler),
+        arrayOf(ExportSignedPackageWizard.APK, true, true, true, true, successHandler),
+        arrayOf(ExportSignedPackageWizard.BUNDLE, false, true, true, false, badStorePassHandler),
+        arrayOf(ExportSignedPackageWizard.APK, false, true, true, false, badStorePassHandler),
+        arrayOf(ExportSignedPackageWizard.BUNDLE, true, false, true, false, badKeyAliasHandler),
+        arrayOf(ExportSignedPackageWizard.APK, true, false, true, false, badKeyAliasHandler),
+        arrayOf(ExportSignedPackageWizard.BUNDLE, true, true, false, false, badKeyPassHandler),
+        arrayOf(ExportSignedPackageWizard.APK, true, true, false, false, badKeyPassHandler),
       )
 
     private val successHandler = Consumer { future: ListenableFuture<AssembleInvocationResult> ->
@@ -143,6 +147,7 @@ class ExportSignedPackageWizardSigningTest(
   private val keyPassword = (if (validKeyPassword) "android" else "badKeyPass").toCharArray()
 
   @get:Rule var myRule = AndroidGradleProjectRule()
+  @get:Rule var tempFolder = TemporaryFolder()
 
   /** Perform a sign and use the result handler to confirm expected behaviour. */
   @Test
@@ -155,7 +160,16 @@ class ExportSignedPackageWizardSigningTest(
     val androidModel = GradleAndroidModel.get(facet)
     Truth.assertThat(androidModel).isNotNull()
     val variants = listOf("release")
-    val keyStorePath = AndroidTestBase.getTestDataPath() + File.separator + "signingKey" + File.separator + "debug.keystore"
+    val sourceKeyStore = File(AndroidTestBase.getTestDataPath() + File.separator + "signingKey" + File.separator + "debug.keystore")
+    val keyStorePath =
+      if (spaceInPath) {
+        val dirWithSpaces = tempFolder.newFolder("keystore with spaces")
+        val target = File(dirWithSpaces, "debug keystore.keystore")
+        sourceKeyStore.copyTo(target)
+        target.path
+      } else {
+        sourceKeyStore.path
+      }
     val signingInfo = GradleSigningInfo(keyStorePath, storePassword, keyAlias, keyPassword)
     val apkPath = androidModel!!.rootDirPath.path
     val modules = listOf(facet.module.getMainModule())

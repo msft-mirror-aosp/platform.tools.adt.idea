@@ -39,6 +39,7 @@ import com.intellij.workspaceModel.ide.legacyBridge.ModuleBridge
 import java.io.File
 import java.math.BigInteger
 import java.nio.file.FileSystem
+import java.nio.file.Files
 import java.security.KeyPairGenerator
 import java.security.KeyStore
 import java.util.Date
@@ -578,6 +579,56 @@ class KeystoreStepTest : LightPlatformTestCase() {
     keystoreStep._init()
     assertThrows(CommitStepException::class.java) {
       keystoreStep.commitForNext()
+    }
+  }
+
+  fun testNextSucceedsWithSpaceInKeystorePath() {
+    val wizard = setupWizardHelper()
+    whenever(wizard.targetType).thenReturn(ExportSignedPackageWizard.BUNDLE)
+
+    val spaceKeyStorePath = fileSystem.someRoot.resolve("test/path with spaces/to/my keystore.jks").toString()
+    val settings = GenerateSignedApkSettings.getInstance(wizard.project)
+    settings.KEY_STORE_PATH = spaceKeyStorePath
+    settings.KEY_ALIAS = KEY_ALIAS
+    settings.REMEMBER_PASSWORDS = true
+
+    val keystoreStep = KeystoreStep(wizard, facets, SameThreadExecutor.INSTANCE)
+    keystoreStep.myFileSystem =
+      createInMemoryFileSystem().apply {
+        val keystorePath = someRoot.resolve(spaceKeyStorePath).recordExistingFile()
+        keystore.store(keystorePath.outputStream(), KEY_STORE_PASSWORD.toCharArray())
+      }
+    keystoreStep.keyStorePasswordField.text = KEY_STORE_PASSWORD
+    keystoreStep.keyPasswordField.text = KEY_PASSWORD
+    keystoreStep.keyStorePathField.text = spaceKeyStorePath
+    keystoreStep._init()
+    keystoreStep.commitForNext()
+
+    // Reload in a fresh step to confirm saved passwords work when the keystore path has spaces.
+    val reloadedStep = KeystoreStep(wizard, facets, SameThreadExecutor.INSTANCE)
+    assertEquals(spaceKeyStorePath, reloadedStep.keyStorePathField.text)
+    assertEquals(KEY_ALIAS, reloadedStep.keyAliasField.text)
+    assertEquals(KEY_STORE_PASSWORD, String(reloadedStep.keyStorePasswordField.password))
+    assertEquals(KEY_PASSWORD, String(reloadedStep.keyPasswordField.password))
+  }
+
+  fun testLoadExistingKeysWithSpaceInKeystorePath() {
+    val wizard = setupWizardHelper()
+    whenever(wizard.targetType).thenReturn(ExportSignedPackageWizard.APK)
+
+    val tempDir = Files.createTempDirectory("keystore dir with spaces")
+    try {
+      val keystoreFile = tempDir.resolve("my keystore.jks")
+      Files.newOutputStream(keystoreFile).use { keystore.store(it, KEY_STORE_PASSWORD.toCharArray()) }
+
+      val keystoreStep = KeystoreStep(wizard, facets, SameThreadExecutor.INSTANCE)
+      keystoreStep.keyStorePathField.text = keystoreFile.toString()
+      keystoreStep.keyStorePasswordField.text = KEY_STORE_PASSWORD
+
+      val keys = ExportSignedPackageUtil.loadExistingKeys(keystoreStep)
+      Truth.assertThat(keys).containsExactly(KEY_ALIAS)
+    } finally {
+      tempDir.toFile().deleteRecursively()
     }
   }
 
