@@ -25,12 +25,15 @@ import com.android.ddmlib.IDevice;
 import com.android.ddmlib.NullOutputReceiver;
 import com.android.tools.idea.model.AndroidManifestIndex;
 import com.android.tools.idea.projectsystem.SourceProviders;
+import com.intellij.openapi.application.Application;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.application.ReadAction;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.externalSystem.util.ExternalSystemUtil;
+import com.intellij.openapi.progress.ProgressManager;
 import com.intellij.openapi.project.DumbService;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.util.Computable;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.StreamSupport;
@@ -63,22 +66,34 @@ public class LaunchUtils {
   @Slow
   @WorkerThread
   public static boolean isWatchFeatureRequired(@NotNull AndroidFacet facet) {
+    Application application = ApplicationManager.getApplication();
     if (!ExternalSystemUtil.isNoBackgroundMode()) {
       // Assert only when not in the headless mode (fails in headless).
-      ApplicationManager.getApplication().assertIsNonDispatchThread();
+      application.assertIsNonDispatchThread();
     }
 
-    if (AndroidFacet.getInstance(facet.getModule()) == null) {
-      Logger.getInstance(LaunchUtils.class).warn("calling isWatchFeatureRequired when facet is not ready yet");
+    if (facet.isDisposed() || facet.getModule().isDisposed()) {
       return false;
     }
-
     Project project = facet.getModule().getProject();
-    return ReadAction.compute(() -> {
+    if (project.isDisposed()) {
+      return false;
+    }
+    Computable<Boolean> computation = () -> {
+      if (facet.isDisposed() || facet.getModule().isDisposed() || project.isDisposed()) {
+        return false;
+      }
+      if (AndroidFacet.getInstance(facet.getModule()) == null) {
+        Logger.getInstance(LaunchUtils.class).warn("calling isWatchFeatureRequired when facet is not ready yet");
+        return false;
+      }
       if (DumbService.isDumb(project)) {
         // indexing in progress, check all current manifests (including flavor and build type ones like debug).
         return SourceProviders.getInstance(facet).getCurrentSourceProviders().stream()
-          .flatMap(provider -> StreamSupport.stream(provider.getManifestFiles().spliterator(), false))
+          .flatMap(provider -> {
+            ProgressManager.checkCanceled();
+            return StreamSupport.stream(provider.getManifestFiles().spliterator(), false);
+          })
           .map(file -> AndroidUtils.loadDomElement(facet.getModule(), file, Manifest.class))
           .filter(Objects::nonNull)
           .anyMatch(manifest ->
@@ -92,7 +107,15 @@ public class LaunchUtils {
         .flatMap((it) -> it.getUsedFeatures().stream())
         .filter((it) -> UsesFeature.HARDWARE_TYPE_WATCH.equals(it.getName()))
         .anyMatch((it) -> !VALUE_FALSE.equals(it.getRequired()));
-    });
+    };
+
+    if (application.isReadAccessAllowed()) {
+      return Boolean.TRUE.equals(computation.compute());
+    }
+    if (application.isDispatchThread()) {
+      return Boolean.TRUE.equals(application.runReadAction(computation));
+    }
+    return Boolean.TRUE.equals(ReadAction.nonBlocking(computation::compute).executeSynchronously());
   }
 
   /**
