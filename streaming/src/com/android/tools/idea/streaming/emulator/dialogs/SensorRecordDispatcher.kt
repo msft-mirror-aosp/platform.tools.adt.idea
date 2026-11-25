@@ -16,11 +16,11 @@
 package com.android.tools.idea.streaming.emulator.dialogs
 
 import com.android.emulation.control.incubating.CarEvent
-import com.android.emulation.control.incubating.EmulatorMessage
-import com.android.emulation.control.incubating.MsgType
-import com.android.emulation.control.incubating.Status
-import com.android.emulation.control.incubating.VehiclePropStatus
-import com.android.emulation.control.incubating.VehiclePropValue
+import com.android.emulation.control.incubating.vhal.EmulatorMessage
+import com.android.emulation.control.incubating.vhal.MsgType
+import com.android.emulation.control.incubating.vhal.Status
+import com.android.emulation.control.incubating.vhal.VehiclePropStatus
+import com.android.emulation.control.incubating.vhal.VehiclePropValue
 import com.android.emulator.control.GpsState
 import com.android.emulator.control.ParameterValue
 import com.android.emulator.control.SensorValue

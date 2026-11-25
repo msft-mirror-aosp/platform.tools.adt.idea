@@ -15,8 +15,8 @@
  */
 package com.android.tools.idea.streaming.emulator.dialogs
 
-import com.android.emulation.control.incubating.VehiclePropStatus
-import com.android.emulation.control.incubating.VehiclePropValue
+import com.android.emulation.control.incubating.vhal.VehiclePropStatus
+import com.android.emulation.control.incubating.vhal.VehiclePropValue
 import com.android.tools.idea.streaming.StreamingBundle.message
 import com.android.tools.idea.streaming.core.cleanNegativeZero
 import com.android.tools.idea.streaming.emulator.dialogs.VhalPropertyConstants.EvConnectorType

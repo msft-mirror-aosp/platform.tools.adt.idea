@@ -23,20 +23,20 @@ import com.android.emulation.control.incubating.Call
 import com.android.emulation.control.incubating.CarEvent
 import com.android.emulation.control.incubating.CarServiceGrpc
 import com.android.emulation.control.incubating.CellInfo
-import com.android.emulation.control.incubating.EmulatorMessage
 import com.android.emulation.control.incubating.ModemGrpc
-import com.android.emulation.control.incubating.MsgType
 import com.android.emulation.control.incubating.PhoneEvent
 import com.android.emulation.control.incubating.Poster
 import com.android.emulation.control.incubating.PosterList
 import com.android.emulation.control.incubating.ReloadEnvironmentRequest
 import com.android.emulation.control.incubating.ReloadEnvironmentResponse
 import com.android.emulation.control.incubating.SmsMessage as ModemSmsMessage
-import com.android.emulation.control.incubating.Status as VhalStatus
-import com.android.emulation.control.incubating.VehiclePropConfig
-import com.android.emulation.control.incubating.VehiclePropStatus
-import com.android.emulation.control.incubating.VehiclePropValue
 import com.android.emulation.control.incubating.VirtualSceneServiceGrpc
+import com.android.emulation.control.incubating.vhal.EmulatorMessage
+import com.android.emulation.control.incubating.vhal.MsgType
+import com.android.emulation.control.incubating.vhal.Status as VhalStatus
+import com.android.emulation.control.incubating.vhal.VehiclePropConfig
+import com.android.emulation.control.incubating.vhal.VehiclePropStatus
+import com.android.emulation.control.incubating.vhal.VehiclePropValue
 import com.android.emulator.control.AnimationState as SceneAnimationState
 import com.android.emulator.control.AnimationStateTarget
 import com.android.emulator.control.BatteryState

@@ -281,8 +281,8 @@ iml_module(
 android_java_proto_library(
     name = "emulator_java_proto",
     srcs = [
-        "proto/VehicleHalProto.proto",
         "@aemu//protos/services/emulator-controller:emulator_controller.proto",
+        "@aemu//protos/services/incubating/car:VehicleHalProto.proto",
         "@aemu//protos/services/incubating/car:car_service.proto",
         "@aemu//protos/services/incubating/car:sensor_session.proto",
         "@aemu//protos/services/incubating/modem:modem_service.proto",

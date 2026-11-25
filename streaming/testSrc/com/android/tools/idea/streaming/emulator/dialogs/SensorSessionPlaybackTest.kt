@@ -15,7 +15,7 @@
  */
 package com.android.tools.idea.streaming.emulator.dialogs
 
-import com.android.emulation.control.incubating.VehiclePropStatus
+import com.android.emulation.control.incubating.vhal.VehiclePropStatus
 import com.android.emulator.control.SensorValue.SensorType
 import com.android.testutils.waitForCondition
 import com.android.tools.adtui.swing.FakeUi

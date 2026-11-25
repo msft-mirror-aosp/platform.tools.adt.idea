@@ -17,8 +17,8 @@ package com.android.tools.idea.streaming.emulator.dialogs
 
 import com.android.adblib.DeviceSelector
 import com.android.adblib.testing.FakeAdbDeviceServices
-import com.android.emulation.control.incubating.VehiclePropStatus
-import com.android.emulation.control.incubating.VehiclePropValue
+import com.android.emulation.control.incubating.vhal.VehiclePropStatus
+import com.android.emulation.control.incubating.vhal.VehiclePropValue
 import com.android.testutils.waitForCondition
 import com.android.tools.adtui.swing.FakeUi
 import com.android.tools.adtui.swing.HeadlessDialogRule

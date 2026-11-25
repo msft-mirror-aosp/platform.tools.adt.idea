@@ -15,9 +15,9 @@
  */
 package com.android.tools.idea.streaming.emulator.dialogs
 
-import com.android.emulation.control.incubating.VehiclePropConfig
-import com.android.emulation.control.incubating.VehiclePropStatus
-import com.android.emulation.control.incubating.VehiclePropValue
+import com.android.emulation.control.incubating.vhal.VehiclePropConfig
+import com.android.emulation.control.incubating.vhal.VehiclePropStatus
+import com.android.emulation.control.incubating.vhal.VehiclePropValue
 import com.android.tools.idea.streaming.StreamingBundle.message
 import com.android.tools.idea.streaming.emulator.dialogs.VhalPropertyConstants.VehiclePropertyAccess
 import com.android.tools.idea.streaming.emulator.dialogs.VhalPropertyConstants.VehiclePropertyType

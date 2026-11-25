@@ -15,8 +15,8 @@
  */
 package com.android.tools.idea.streaming.emulator.dialogs
 
-import com.android.emulation.control.incubating.VehiclePropStatus
-import com.android.emulation.control.incubating.VehiclePropValue
+import com.android.emulation.control.incubating.vhal.VehiclePropStatus
+import com.android.emulation.control.incubating.vhal.VehiclePropValue
 import com.android.tools.idea.streaming.StreamingBundle.message
 import com.android.tools.idea.streaming.emulator.dialogs.VhalPropertyConstants.VehicleGear
 import com.android.tools.idea.streaming.emulator.dialogs.VhalPropertyConstants.VehicleIgnitionState
@@ -179,15 +179,22 @@ internal class CarSensorDataTab(private val owner: CarDataDialog) {
                       if (!isSyncingControls && speedInitialized) {
                         val parsed = text.trim().toIntOrNull()
                         val current = currentDisplaySpeed()
-                        if (parsed == current) {
-                          owner.clearErrorMessage()
-                          syncSpeedControls(parsed)
-                        } else if (parsed == null || parsed !in speedUnit.minSpeed..speedUnit.maxSpeed) {
-                          owner.showErrorMessage(message("car.data.dialog.error.speed.range", speedUnit.minSpeed, speedUnit.maxSpeed))
-                          text = current.toString()
-                        } else {
-                          owner.clearErrorMessage()
-                          setDisplaySpeedFromUi(parsed)
+                        when (parsed) {
+                          current -> {
+                            owner.clearErrorMessage()
+                            syncSpeedControls(parsed)
+                          }
+
+                          null,
+                          !in speedUnit.minSpeed..speedUnit.maxSpeed -> {
+                            owner.showErrorMessage(message("car.data.dialog.error.speed.range", speedUnit.minSpeed, speedUnit.maxSpeed))
+                            text = current.toString()
+                          }
+
+                          else -> {
+                            owner.clearErrorMessage()
+                            setDisplaySpeedFromUi(parsed)
+                          }
                         }
                       }
                     }

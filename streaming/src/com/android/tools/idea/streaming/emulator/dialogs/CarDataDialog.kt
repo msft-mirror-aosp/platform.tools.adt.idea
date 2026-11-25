@@ -20,14 +20,14 @@ import com.android.adblib.DeviceSelector
 import com.android.adblib.ShellCommandOutputElement
 import com.android.adblib.shellAsLines
 import com.android.emulation.control.incubating.CarEvent
-import com.android.emulation.control.incubating.EmulatorMessage
-import com.android.emulation.control.incubating.MsgType
-import com.android.emulation.control.incubating.Status
-import com.android.emulation.control.incubating.VehicleAreaConfig
-import com.android.emulation.control.incubating.VehiclePropConfig
-import com.android.emulation.control.incubating.VehiclePropGet
-import com.android.emulation.control.incubating.VehiclePropStatus
-import com.android.emulation.control.incubating.VehiclePropValue
+import com.android.emulation.control.incubating.vhal.EmulatorMessage
+import com.android.emulation.control.incubating.vhal.MsgType
+import com.android.emulation.control.incubating.vhal.Status
+import com.android.emulation.control.incubating.vhal.VehicleAreaConfig
+import com.android.emulation.control.incubating.vhal.VehiclePropConfig
+import com.android.emulation.control.incubating.vhal.VehiclePropGet
+import com.android.emulation.control.incubating.vhal.VehiclePropStatus
+import com.android.emulation.control.incubating.vhal.VehiclePropValue
 import com.android.tools.idea.adblib.AdbLibApplicationService
 import com.android.tools.idea.adblib.AdbLibService
 import com.android.tools.idea.protobuf.ByteString
@@ -485,7 +485,7 @@ internal class CarDataDialog(emulator: EmulatorController) :
     private val PROP_ID_REGEX = Regex("""Property(?:\s+ID)?:\s*(?:[A-Za-z0-9_]+\()?(0x[0-9a-fA-F]+|-?\d+)\)?""")
     private val ACCESS_REGEX = Regex("""\baccess:\s*(?:[A-Za-z0-9_]+\()?(0x[0-9a-fA-F]+|-?\d+)\)?""")
     private val CHANGE_MODE_REGEX = Regex("""\bchangeMode:\s*(?:[A-Za-z0-9_]+\()?(0x[0-9a-fA-F]+|-?\d+)\)?""")
-    private val CONFIG_ARRAY_REGEX = Regex("""\bconfig(?:Array)?:\s*\[([^\]]*)]""")
+    private val CONFIG_ARRAY_REGEX = Regex("""\bconfig(?:Array)?:\s*\[([^]]*)]""")
     private val MIN_SAMPLE_RATE_REGEX = Regex("""\b(?:fs min|minSampleRateHz):\s*([+-]?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)""")
     private val MAX_SAMPLE_RATE_REGEX = Regex("""\b(?:fs max|maxSampleRateHz):\s*([+-]?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)""")
     private val AREA_CONFIG_ID_REGEX = Regex("""^\s*areaId:\s*(?:[^,]*?\()?(0x[0-9a-fA-F]+|-?\d+)\)?""")
@@ -497,14 +497,14 @@ internal class CarDataDialog(emulator: EmulatorController) :
     private val I64_MAX_REGEX = Regex("""\bi64 max:\s*(-?\d+)""")
 
     private val VALUE_AREA_ID_REGEX =
-      Regex("""(?:Area ID|zone):\s*(?:.*?)\((0x[0-9a-fA-F]+|-?\d+)\)|(?:Area ID|zone):\s*(0x[0-9a-fA-F]+|-?\d+)""")
+      Regex("""(?:Area ID|zone):\s*.*?\((0x[0-9a-fA-F]+|-?\d+)\)|(?:Area ID|zone):\s*(0x[0-9a-fA-F]+|-?\d+)""")
     private val VALUE_STATUS_REGEX = Regex("""(?:SystemStatus|Status|status):\s*(?:[A-Za-z0-9_]+\()?(0x[0-9a-fA-F]+|-?\d+)\)?""")
     private val VALUE_TIMESTAMP_REGEX = Regex("""(?:ElapsedRealtimeNanos|timestamp):\s*(-?\d+)""")
     private val MODERN_VALUE_SUFFIX_REGEX = Regex("""Value:\s*(.*)}$""")
-    private val FLOAT_VALUES_REGEX = Regex("""floatValues:\s*\[([^\]]*)]""")
-    private val INT32_VALUES_REGEX = Regex("""int32Values:\s*\[([^\]]*)]""")
-    private val INT64_VALUES_REGEX = Regex("""int64Values:\s*\[([^\]]*)]""")
-    private val BYTES_VALUES_REGEX = Regex("""bytes:\s*\[([^\]]*)]""")
+    private val FLOAT_VALUES_REGEX = Regex("""floatValues:\s*\[([^]]*)]""")
+    private val INT32_VALUES_REGEX = Regex("""int32Values:\s*\[([^]]*)]""")
+    private val INT64_VALUES_REGEX = Regex("""int64Values:\s*\[([^]]*)]""")
+    private val BYTES_VALUES_REGEX = Regex("""bytes:\s*\[([^]]*)]""")
     private val STRING_VALUE_REGEX = Regex("""string:\s*(.*)$""")
     private val ENUM_OR_HEX_VALUE_REGEX = Regex("""^(?:[A-Za-z0-9_]+\()?(0x[0-9a-fA-F]+|-?\d+)\)?(?:\s+[A-Za-z0-9_]+)?$""")
 
@@ -608,7 +608,7 @@ internal class CarDataDialog(emulator: EmulatorController) :
         return
       }
       when (valueType) {
-        VehiclePropertyType.STRING -> builder.setStringValue(rawValue)
+        VehiclePropertyType.STRING -> builder.stringValue = rawValue
         VehiclePropertyType.BOOLEAN -> {
           val trimmed = rawValue.trim()
           val boolInt =
@@ -649,7 +649,7 @@ internal class CarDataDialog(emulator: EmulatorController) :
             parseIntLiteral(elem)?.toByte()?.let(byteList::add)
           }
           if (byteList.isNotEmpty()) {
-            builder.setBytesValue(ByteString.copyFrom(byteList.toByteArray()))
+            builder.bytesValue = ByteString.copyFrom(byteList.toByteArray())
           }
         }
         VehiclePropertyType.MIXED -> {
@@ -677,12 +677,12 @@ internal class CarDataDialog(emulator: EmulatorController) :
       BYTES_VALUES_REGEX.find(text)?.groupValues?.get(1)?.let { listStr ->
         val bytes = splitNonBlank(listStr).mapNotNull { parseIntLiteral(it)?.toByte() }.toByteArray()
         if (bytes.isNotEmpty()) {
-          builder.setBytesValue(ByteString.copyFrom(bytes))
+          builder.bytesValue = ByteString.copyFrom(bytes)
         }
       }
       STRING_VALUE_REGEX.find(text)?.groupValues?.get(1)?.let { str ->
         if (str.isNotEmpty() || builder.valueType == VehiclePropertyType.STRING) {
-          builder.setStringValue(str)
+          builder.stringValue = str
         }
       }
     }
