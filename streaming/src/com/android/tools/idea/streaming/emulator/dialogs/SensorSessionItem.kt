@@ -15,10 +15,10 @@
  */
 package com.android.tools.idea.streaming.emulator.dialogs
 
-import com.android.emulator.control.SensorSession.SensorRecord
-import com.android.emulator.control.SensorSession.SessionMetadata
 import com.android.tools.idea.streaming.StreamingBundle.message
 import com.android.tools.idea.streaming.emulator.dialogs.SensorSessionAccumulator.SensorRecordStore
+import com.google.android.apps.automotive.sensing.sensorreplay.SensorSession.SensorRecord
+import com.google.android.apps.automotive.sensing.sensorreplay.SensorSession.SessionMetadata
 import java.nio.file.Path
 import kotlin.time.Duration
 import org.jetbrains.annotations.VisibleForTesting

@@ -15,16 +15,16 @@
  */
 package com.android.tools.idea.streaming.emulator.dialogs
 
-import com.android.emulator.control.SensorSession.SensorRecord
-import com.android.emulator.control.SensorSession.SensorRecord.CarPropertyValue
-import com.android.emulator.control.SensorSession.SensorRecord.PositionProto
-import com.android.emulator.control.SensorSession.SensorRecord.PositionProto.PointProto
-import com.android.emulator.control.SensorSession.SensorRecord.PositionProto.PositionProvider
-import com.android.emulator.control.SensorSession.SensorRecord.SensorEvent
-import com.android.emulator.control.SensorSession.SessionMetadata
 import com.android.tools.idea.protobuf.CodedInputStream
 import com.android.tools.idea.protobuf.InvalidProtocolBufferException
 import com.android.tools.idea.protobuf.WireFormat
+import com.google.android.apps.automotive.sensing.sensorreplay.SensorSession.SensorRecord
+import com.google.android.apps.automotive.sensing.sensorreplay.SensorSession.SensorRecord.CarPropertyValue
+import com.google.android.apps.automotive.sensing.sensorreplay.SensorSession.SensorRecord.PositionProto
+import com.google.android.apps.automotive.sensing.sensorreplay.SensorSession.SensorRecord.PositionProto.PointProto
+import com.google.android.apps.automotive.sensing.sensorreplay.SensorSession.SensorRecord.PositionProto.PositionProvider
+import com.google.android.apps.automotive.sensing.sensorreplay.SensorSession.SensorRecord.SensorEvent
+import com.google.android.apps.automotive.sensing.sensorreplay.SensorSession.SessionMetadata
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardOpenOption
@@ -220,10 +220,7 @@ internal object SensorSessionBinaryProtoLoader {
         POSITION_SPEED_MPS_TAG -> builder.speedMps = input.readFloat()
         POSITION_ALTITUDE_M_TAG -> builder.altitudeM = input.readDouble()
         POSITION_PROVIDER_TAG -> {
-          val provider = PositionProvider.forNumber(input.readEnum())
-          if (provider != null) {
-            builder.provider = provider
-          }
+          builder.provider = PositionProvider.forNumber(input.readEnum()) ?: PositionProvider.UNKNOWN
         }
         POSITION_BEARING_DEG_TAG -> builder.bearingDegFullAccuracy = input.readFloat()
         else -> skipFieldOrThrow(input, tag)

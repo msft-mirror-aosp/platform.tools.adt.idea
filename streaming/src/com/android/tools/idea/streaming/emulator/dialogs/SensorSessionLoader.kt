@@ -15,7 +15,7 @@
  */
 package com.android.tools.idea.streaming.emulator.dialogs
 
-import com.android.emulator.control.SensorSession.SensorRecord
+import com.google.android.apps.automotive.sensing.sensorreplay.SensorSession.SensorRecord
 import java.io.IOException
 import java.nio.ByteBuffer
 import java.nio.CharBuffer

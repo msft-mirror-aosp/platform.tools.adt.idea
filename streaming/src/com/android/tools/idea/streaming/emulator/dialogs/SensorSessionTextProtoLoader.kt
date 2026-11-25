@@ -15,10 +15,10 @@
  */
 package com.android.tools.idea.streaming.emulator.dialogs
 
-import com.android.emulator.control.SensorSession
-import com.android.emulator.control.SensorSession.SensorRecord
-import com.android.emulator.control.SensorSession.SessionMetadata
 import com.android.tools.idea.protobuf.TextFormat
+import com.google.android.apps.automotive.sensing.sensorreplay.SensorSession
+import com.google.android.apps.automotive.sensing.sensorreplay.SensorSession.SensorRecord
+import com.google.android.apps.automotive.sensing.sensorreplay.SensorSession.SessionMetadata
 import java.io.InputStreamReader
 import java.io.Reader
 import java.nio.charset.CodingErrorAction
@@ -98,9 +98,160 @@ internal object SensorSessionTextProtoLoader {
 
   private fun parseAndStripSensorRecord(body: CharSequence): SensorRecord {
     val builder = SensorRecord.newBuilder()
-    TEXT_FORMAT_PARSER.merge(body, builder)
-    builder.clearImage()
-    return builder.build()
+    try {
+      TEXT_FORMAT_PARSER.merge(body, builder)
+    } catch (e: TextFormat.ParseException) {
+      val normalized = rewriteUnsignedE7Coordinates(body) ?: throw e
+      builder.clear()
+      TEXT_FORMAT_PARSER.merge(normalized, builder)
+    }
+    return buildStrippedSensorRecord(builder.build())
+  }
+
+  private fun buildStrippedSensorRecord(parsed: SensorRecord): SensorRecord {
+    val stripped = SensorRecord.newBuilder()
+    if (parsed.hasTimestampNs()) {
+      stripped.timestampNs = parsed.timestampNs
+    }
+    if (parsed.locationsCount > 0) {
+      stripped.addAllLocations(parsed.locationsList)
+    }
+    if (parsed.carPropertyValuesCount > 0) {
+      stripped.putAllCarPropertyValues(parsed.carPropertyValuesMap)
+    }
+    if (parsed.sensorEventsCount > 0) {
+      stripped.putAllSensorEvents(parsed.sensorEventsMap)
+    }
+    return stripped.build()
+  }
+
+  /**
+   * Rewrites legacy unsigned 32-bit `fixed32` literals (`2147483648..4294967295`, including hex and octal forms) assigned to `lat_e7` or
+   * `lng_e7` into their two's-complement signed 32-bit `sfixed32` equivalents. Returns `null` if no such literals exist in [body].
+   */
+  private fun rewriteUnsignedE7Coordinates(body: CharSequence): String? {
+    var out: StringBuilder? = null
+    var lastCopied = 0
+    var i = 0
+    val len = body.length
+
+    while (i < len) {
+      when (val ch = body[i]) {
+        '#' -> i = skipCommentInCharSequence(body, i)
+        '"',
+        '\'' -> i = skipQuotedInCharSequence(body, i)
+        else -> {
+          if (TopLevelTextProtoScanner.isIdentifierChar(ch)) {
+            val idStart = i
+            i++
+            while (i < len && TopLevelTextProtoScanner.isIdentifierChar(body[i])) {
+              i++
+            }
+            if (isCoordinateFieldName(body, idStart, i)) {
+              var cursor = skipWhitespaceAndCommentsInCharSequence(body, i)
+              if (cursor < len && body[cursor] == ':') {
+                cursor = skipWhitespaceAndCommentsInCharSequence(body, cursor + 1)
+              }
+              if (cursor < len && body[cursor] in '0'..'9') {
+                val numStart = cursor
+                cursor++
+                while (cursor < len && TopLevelTextProtoScanner.isScalarTokenContinuation(body[cursor])) {
+                  cursor++
+                }
+                val signedEquivalent = parseUnsignedFixed32OverflowAsSigned(body, numStart, cursor)
+                if (signedEquivalent != null) {
+                  val sb = out ?: StringBuilder(len + 16).also { out = it }
+                  sb.append(body, lastCopied, numStart)
+                  sb.append(signedEquivalent)
+                  lastCopied = cursor
+                  i = cursor
+                }
+              }
+            }
+          } else {
+            i++
+          }
+        }
+      }
+    }
+
+    val sb = out ?: return null
+    sb.append(body, lastCopied, len)
+    return sb.toString()
+  }
+
+  private fun isCoordinateFieldName(body: CharSequence, start: Int, end: Int): Boolean =
+    end - start == 6 && (body.regionMatches(start, "lat_e7", 0, 6) || body.regionMatches(start, "lng_e7", 0, 6))
+
+  private fun skipCommentInCharSequence(body: CharSequence, start: Int): Int {
+    var i = start + 1
+    while (i < body.length) {
+      if (body[i++] == '\n') break
+    }
+    return i
+  }
+
+  private fun skipQuotedInCharSequence(body: CharSequence, start: Int): Int {
+    val quote = body[start]
+    var i = start + 1
+    while (i < body.length) {
+      val ch = body[i++]
+      if (ch == quote || ch == '\n') break
+      if (ch == '\\' && i < body.length) i++
+    }
+    return i
+  }
+
+  private fun skipWhitespaceAndCommentsInCharSequence(body: CharSequence, start: Int): Int {
+    var i = start
+    while (i < body.length) {
+      val ch = body[i]
+      if (TopLevelTextProtoScanner.isProtoWhitespace(ch)) {
+        i++
+      } else if (ch == '#') {
+        i = skipCommentInCharSequence(body, i)
+      } else {
+        break
+      }
+    }
+    return i
+  }
+
+  private fun parseUnsignedFixed32OverflowAsSigned(body: CharSequence, start: Int, end: Int): Int? {
+    val len = end - start
+    if (len <= 0) return null
+    val radix: Int
+    val digitStart: Int
+    if (len >= 3 && body[start] == '0' && (body[start + 1] == 'x' || body[start + 1] == 'X')) {
+      radix = 16
+      digitStart = start + 2
+    } else if (len >= 2 && body[start] == '0') {
+      radix = 8
+      digitStart = start + 1
+    } else {
+      radix = 10
+      digitStart = start
+    }
+
+    var value = 0L
+    for (k in digitStart until end) {
+      val digit = asciiDigitValue(body[k], radix)
+      if (digit < 0) return null
+      value = value * radix + digit
+      if (value > 0xFFFF_FFFFL) return null
+    }
+    return if (value > Int.MAX_VALUE.toLong()) value.toInt() else null
+  }
+
+  private fun asciiDigitValue(ch: Char, radix: Int): Int {
+    val d =
+      when (ch) {
+        in '0'..'9' -> ch - '0'
+        in 'a'..'f' -> ch - 'a' + 10
+        in 'A'..'F' -> ch - 'A' + 10
+        else -> return -1
+      }
+    return if (d < radix) d else -1
   }
 
   private fun mergeStrippedSessionMetadata(parsed: SessionMetadata, target: SessionMetadata.Builder) {
@@ -425,8 +576,9 @@ internal object SensorSessionTextProtoLoader {
         }
       }
 
-      private fun isProtoWhitespace(ch: Char): Boolean =
-        ch == ' ' || ch == '\t' || ch == '\n' || ch == '\r' || ch == '\u000B' || ch == '\u000C'
+      fun isProtoWhitespace(ch: Char): Boolean = ch == ' ' || ch == '\t' || ch == '\n' || ch == '\r' || ch == '\u000B' || ch == '\u000C'
+
+      fun isScalarTokenContinuation(ch: Char): Boolean = ch in '0'..'9' || ch in 'a'..'z' || ch in 'A'..'Z' || ch == '_' || ch == '.'
 
       private fun isScalarWordChar(ch: Char): Boolean =
         ch in '0'..'9' || ch in 'a'..'z' || ch in 'A'..'Z' || ch == '_' || ch == '.' || ch == '+' || ch == '-'

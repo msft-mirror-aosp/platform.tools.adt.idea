@@ -15,15 +15,15 @@
  */
 package com.android.tools.idea.streaming.emulator.dialogs
 
-import com.android.emulator.control.SensorSession.SensorRecord
-import com.android.emulator.control.SensorSession.SensorRecord.CarPropertyValue
-import com.android.emulator.control.SensorSession.SensorRecord.PositionProto
-import com.android.emulator.control.SensorSession.SensorRecord.SensorEvent
-import com.android.emulator.control.SensorSession.SessionMetadata
 import com.android.tools.idea.protobuf.CodedInputStream
 import com.android.tools.idea.protobuf.CodedOutputStream
 import com.android.tools.idea.protobuf.InvalidProtocolBufferException
 import com.android.tools.idea.streaming.emulator.dialogs.SensorSessionAccumulator.SensorRecordStore.Companion.mergeRecordIntoAggregate
+import com.google.android.apps.automotive.sensing.sensorreplay.SensorSession.SensorRecord
+import com.google.android.apps.automotive.sensing.sensorreplay.SensorSession.SensorRecord.CarPropertyValue
+import com.google.android.apps.automotive.sensing.sensorreplay.SensorSession.SensorRecord.PositionProto
+import com.google.android.apps.automotive.sensing.sensorreplay.SensorSession.SensorRecord.SensorEvent
+import com.google.android.apps.automotive.sensing.sensorreplay.SensorSession.SessionMetadata
 import java.io.BufferedInputStream
 import java.io.BufferedOutputStream
 import java.io.Closeable

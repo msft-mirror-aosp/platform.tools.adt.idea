@@ -15,10 +15,6 @@
  */
 package com.android.tools.idea.streaming.emulator.dialogs
 
-import com.android.emulator.control.SensorSession
-import com.android.emulator.control.SensorSession.SensorRecord
-import com.android.emulator.control.SensorSession.SensorRecord.CarPropertyValue
-import com.android.emulator.control.SensorSession.SessionMetadata
 import com.android.testutils.waitForCondition
 import com.android.tools.adtui.swing.FakeUi
 import com.android.tools.adtui.swing.HeadlessDialogRule
@@ -30,6 +26,10 @@ import com.android.tools.idea.protobuf.TextFormat
 import com.android.tools.idea.streaming.core.ClipboardSynchronizationDisablementRule
 import com.android.tools.idea.streaming.emulator.FakeEmulatorRule
 import com.android.tools.idea.streaming.emulator.dialogs.VhalPropertyConstants.VehicleProperty
+import com.google.android.apps.automotive.sensing.sensorreplay.SensorSession
+import com.google.android.apps.automotive.sensing.sensorreplay.SensorSession.SensorRecord
+import com.google.android.apps.automotive.sensing.sensorreplay.SensorSession.SensorRecord.CarPropertyValue
+import com.google.android.apps.automotive.sensing.sensorreplay.SensorSession.SessionMetadata
 import com.google.common.truth.Truth.assertThat
 import com.intellij.icons.AllIcons
 import com.intellij.ide.util.PropertiesComponent

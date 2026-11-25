@@ -15,15 +15,7 @@
  */
 package com.android.tools.idea.streaming.emulator.dialogs
 
-import com.android.emulator.control.SensorSession
-import com.android.emulator.control.SensorSession.SensorRecord
-import com.android.emulator.control.SensorSession.SensorRecord.CarPropertyValue
-import com.android.emulator.control.SensorSession.SensorRecord.PositionProto
-import com.android.emulator.control.SensorSession.SensorRecord.PositionProto.PointProto
-import com.android.emulator.control.SensorSession.SensorRecord.PositionProto.PositionProvider
-import com.android.emulator.control.SensorSession.SensorRecord.SensorEvent
-import com.android.emulator.control.SensorSession.SessionMetadata
-import com.android.emulator.control.SensorValue.SensorType
+import com.android.emulator.control.SensorValue
 import com.android.testutils.waitForCondition
 import com.android.tools.adtui.swing.FakeUi
 import com.android.tools.adtui.swing.HeadlessDialogRule
@@ -34,6 +26,16 @@ import com.android.tools.idea.streaming.core.ClipboardSynchronizationDisablement
 import com.android.tools.idea.streaming.emulator.FakeEmulatorRule
 import com.android.tools.idea.streaming.emulator.dialogs.VhalPropertyConstants.VehicleGear
 import com.android.tools.idea.streaming.emulator.dialogs.VhalPropertyConstants.VehicleProperty
+import com.google.android.apps.automotive.sensing.sensorreplay.SensorSession
+import com.google.android.apps.automotive.sensing.sensorreplay.SensorSession.SensorRecord
+import com.google.android.apps.automotive.sensing.sensorreplay.SensorSession.SensorRecord.CameraFrame
+import com.google.android.apps.automotive.sensing.sensorreplay.SensorSession.SensorRecord.CarPropertyValue
+import com.google.android.apps.automotive.sensing.sensorreplay.SensorSession.SensorRecord.PositionProto
+import com.google.android.apps.automotive.sensing.sensorreplay.SensorSession.SensorRecord.PositionProto.PointProto
+import com.google.android.apps.automotive.sensing.sensorreplay.SensorSession.SensorRecord.PositionProto.PositionProvider
+import com.google.android.apps.automotive.sensing.sensorreplay.SensorSession.SensorRecord.SensorEvent
+import com.google.android.apps.automotive.sensing.sensorreplay.SensorSession.SessionMetadata
+import com.google.android.apps.automotive.sensing.sensorreplay.SensorType
 import com.google.common.truth.Truth.assertThat
 import com.intellij.ide.util.PropertiesComponent
 import com.intellij.openapi.actionSystem.ActionToolbar
@@ -104,9 +106,9 @@ class SensorSessionTextProtoLoaderTest {
             .setName("Morning commute")
             .setDescription("Recorded with camera & car sensors")
             .setVersion(SessionMetadata.Version.newBuilder().setMajor(4).setMinor(2).setPatch(1))
-            .addSensors(SessionMetadata.SensorType.SENSOR_TYPE_CAR_PROPERTY)
-            .addSensors(SessionMetadata.SensorType.SENSOR_TYPE_SENSOR_EVENT)
-            .addSensors(SessionMetadata.SensorType.SENSOR_TYPE_PLATFORM_LOCATION)
+            .addSensors(SensorType.SENSOR_TYPE_CAR_PROPERTY)
+            .addSensors(SensorType.SENSOR_TYPE_SENSOR_EVENT)
+            .addSensors(SensorType.SENSOR_TYPE_PLATFORM_LOCATION)
             .putCarPropertyConfigs(
               VehicleProperty.PERF_VEHICLE_SPEED,
               SessionMetadata.CarPropertyConfig.newBuilder()
@@ -164,11 +166,13 @@ class SensorSessionTextProtoLoaderTest {
                 .setVerticalAccuracyMeters(1.2)
                 .setSpeedMps(12.0f)
                 .setBearingDegFullAccuracy(90.25f)
-                .setLevelId("L1")
-                .setClusterId("C1")
-                .setLevelNumberE3(1000)
+                .setSpeedAccuracyMps(0.5f)
+                .setBearingAccuracyDegrees(1.5f)
             )
-            .setImage(ByteString.copyFrom(ByteArray(4096) { (it and 0xFF).toByte() }))
+            .putCameraFrames(
+              "front",
+              CameraFrame.newBuilder().setData(ByteString.copyFrom(ByteArray(4096) { (it and 0xFF).toByte() })).build(),
+            )
             .putSensorEvents(
               "android.sensor.accelerometer_Accel",
               SensorEvent.newBuilder().addValues(0.4f).addValues(9.8f).addValues(-0.2f).setAccuracy(3).build(),
@@ -239,7 +243,7 @@ class SensorSessionTextProtoLoaderTest {
     assertThat(abs(fakeEmulator.gpsLocation.latitude - 37.4219999)).isLessThan(1e-6)
     assertThat(abs(fakeEmulator.gpsLocation.longitude - (-122.0840575))).isLessThan(1e-6)
     assertThat(abs(fakeEmulator.gpsLocation.altitude - 22.5)).isLessThan(1e-6)
-    assertThat(fakeEmulator.getSensorOverride(SensorType.ACCELERATION)).containsExactly(0.4f, 9.8f, -0.2f).inOrder()
+    assertThat(fakeEmulator.getSensorOverride(SensorValue.SensorType.ACCELERATION)).containsExactly(0.4f, 9.8f, -0.2f).inOrder()
 
     dialog.close(DialogWrapper.CLOSE_EXIT_CODE)
   }
@@ -284,17 +288,30 @@ class SensorSessionTextProtoLoaderTest {
           {
             timestamp_ns: 300000000;
             locations <
+              main_provider: "network"
+              point { lat_e7: 100000000, lng_e7: 200000000 }
+            >
+            locations <
               provider: GPS
               point { lat_e7: 374219999, lng_e7: 3074126721 }
               speed_mps: .5f
               altitude_m: 1e1
+              level_id: "legacy_removed_field"
             >
             car_property_values {
               key: ${VehicleProperty.PERF_VEHICLE_SPEED}
               value { float_values: [42.5] }
             }
-            6 {
-              1: "unknown_protoc_camera_payload"
+            camera_frames {
+              key: "rear"
+              value { data: "$largeCameraEscapeChunk" }
+            }
+            audio_buffers {
+              key: "audio_input"
+              value { data: "$largeCameraEscapeChunk" }
+            }
+            99 {
+              1: "unknown_protoc_payload"
             }
             image: "
         """
@@ -333,6 +350,7 @@ class SensorSessionTextProtoLoaderTest {
     val backingTempFile = loadedItem.tempFileForTesting
     assertThat(backingTempFile).isNotNull()
     assertThat(Files.exists(backingTempFile!!)).isTrue()
+    assertThat(Files.size(backingTempFile)).isLessThan(16 * 1024L)
     assertThat(loadedItem.appVersion).isEqualTo("2.8.3")
     assertThat(loadedItem.totalEvents).isEqualTo(21L)
 
@@ -422,7 +440,13 @@ class SensorSessionTextProtoLoaderTest {
     importSensorFile(ui, dialogController, badEscapeFile)
     waitForCondition(5.seconds) { hasValidationError(ui, "Unable to parse sensor file 'bad_escape.pbtxt'") }
 
-    // 7. Deeply nested unknown messages (>64 levels) fail cleanly without StackOverflowError.
+    // 7. Out-of-range > 32-bit coordinate in lat_e7/lng_e7 fails cleanly.
+    val overflowCoordFile = tempDir.resolve("overflow_coord.textproto")
+    overflowCoordFile.writeText("sensor_records { timestamp_ns: 100 locations { provider: GPS point { lat_e7: 0 lng_e7: 4294967296 } } }")
+    importSensorFile(ui, dialogController, overflowCoordFile)
+    waitForCondition(5.seconds) { hasValidationError(ui, "Unable to parse sensor file 'overflow_coord.textproto'") }
+
+    // 8. Deeply nested unknown messages (>64 levels) fail cleanly without StackOverflowError.
     val deepTextProto = tempDir.resolve("deep_nested.textproto")
     deepTextProto.writeText("u {".repeat(100) + "a: 1" + "}".repeat(100))
     importSensorFile(ui, dialogController, deepTextProto)

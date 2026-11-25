@@ -15,14 +15,14 @@
  */
 package com.android.tools.idea.streaming.emulator.dialogs
 
-import com.android.emulator.control.SensorSession.SensorRecord
-import com.android.emulator.control.SensorSession.SessionMetadata
 import com.android.tools.idea.io.grpc.StatusException
 import com.android.tools.idea.io.grpc.StatusRuntimeException
 import com.android.tools.idea.streaming.core.EdtAnyModality
 import com.android.tools.idea.streaming.emulator.EmulatorController
 import com.android.tools.idea.streaming.emulator.dialogs.SensorSessionAccumulator.Companion.formatDuration
 import com.android.tools.idea.streaming.emulator.dialogs.SensorSessionAccumulator.SensorRecordStore.Companion.mergeRecordIntoAggregate
+import com.google.android.apps.automotive.sensing.sensorreplay.SensorSession.SensorRecord
+import com.google.android.apps.automotive.sensing.sensorreplay.SensorSession.SessionMetadata
 import com.intellij.openapi.diagnostic.thisLogger
 import java.io.IOException
 import java.util.concurrent.atomic.AtomicBoolean

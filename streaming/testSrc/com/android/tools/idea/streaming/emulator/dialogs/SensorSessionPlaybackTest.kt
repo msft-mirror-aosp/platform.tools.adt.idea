@@ -16,14 +16,6 @@
 package com.android.tools.idea.streaming.emulator.dialogs
 
 import com.android.emulation.control.incubating.VehiclePropStatus
-import com.android.emulator.control.SensorSession
-import com.android.emulator.control.SensorSession.SensorRecord
-import com.android.emulator.control.SensorSession.SensorRecord.CarPropertyValue
-import com.android.emulator.control.SensorSession.SensorRecord.PositionProto
-import com.android.emulator.control.SensorSession.SensorRecord.PositionProto.PointProto
-import com.android.emulator.control.SensorSession.SensorRecord.PositionProto.PositionProvider
-import com.android.emulator.control.SensorSession.SensorRecord.SensorEvent
-import com.android.emulator.control.SensorSession.SessionMetadata
 import com.android.emulator.control.SensorValue.SensorType
 import com.android.testutils.waitForCondition
 import com.android.tools.adtui.swing.FakeUi
@@ -31,12 +23,21 @@ import com.android.tools.adtui.swing.HeadlessDialogRule
 import com.android.tools.adtui.swing.PortableUiFontRule
 import com.android.tools.idea.protobuf.ByteString
 import com.android.tools.idea.protobuf.CodedOutputStream
+import com.android.tools.idea.protobuf.UnknownFieldSet
 import com.android.tools.idea.protobuf.WireFormat
 import com.android.tools.idea.streaming.core.ClipboardSynchronizationDisablementRule
 import com.android.tools.idea.streaming.core.ProgressSlider
 import com.android.tools.idea.streaming.emulator.FakeEmulatorRule
 import com.android.tools.idea.streaming.emulator.dialogs.VhalPropertyConstants.VehicleGear
 import com.android.tools.idea.streaming.emulator.dialogs.VhalPropertyConstants.VehicleProperty
+import com.google.android.apps.automotive.sensing.sensorreplay.SensorSession
+import com.google.android.apps.automotive.sensing.sensorreplay.SensorSession.SensorRecord
+import com.google.android.apps.automotive.sensing.sensorreplay.SensorSession.SensorRecord.CarPropertyValue
+import com.google.android.apps.automotive.sensing.sensorreplay.SensorSession.SensorRecord.PositionProto
+import com.google.android.apps.automotive.sensing.sensorreplay.SensorSession.SensorRecord.PositionProto.PointProto
+import com.google.android.apps.automotive.sensing.sensorreplay.SensorSession.SensorRecord.PositionProto.PositionProvider
+import com.google.android.apps.automotive.sensing.sensorreplay.SensorSession.SensorRecord.SensorEvent
+import com.google.android.apps.automotive.sensing.sensorreplay.SensorSession.SessionMetadata
 import com.google.common.truth.Truth.assertThat
 import com.intellij.icons.AllIcons
 import com.intellij.ide.util.PropertiesComponent
@@ -142,6 +143,13 @@ class SensorSessionPlaybackTest {
                 .setProvider(PositionProvider.WIFI)
                 .setPoint(PointProto.newBuilder().setLatE7(100_000_000).setLngE7(200_000_000))
             )
+            // Legacy CELL_WITH_NEIGHBORS (wire enum value 5, now reserved) and omitted provider must not be treated as GPS.
+            .addLocations(
+              PositionProto.newBuilder()
+                .setPoint(PointProto.newBuilder().setLatE7(110_000_000).setLngE7(210_000_000))
+                .setUnknownFields(UnknownFieldSet.newBuilder().mergeVarintField(PositionProto.PROVIDER_FIELD_NUMBER, 5).build())
+            )
+            .addLocations(PositionProto.newBuilder().setPoint(PointProto.newBuilder().setLatE7(120_000_000).setLngE7(220_000_000)))
             .addLocations(
               PositionProto.newBuilder()
                 .setProvider(PositionProvider.GPS)
@@ -249,7 +257,7 @@ class SensorSessionPlaybackTest {
     assertThat(slider.value).isEqualTo(0)
     assertThat(playPauseButton.text).isEmpty()
     assertThat(playPauseButton.icon).isEqualTo(AllIcons.Actions.Execute)
-    assertThat((playPauseButton as IconButton).tooltipText).isEqualTo("Play")
+    assertThat(playPauseButton.tooltipText).isEqualTo("Play")
     assertThat(playPauseButton.accessibleContext.accessibleName).isEqualTo("Play")
 
     // Test Play -> Pause -> Resume during a 2s session: Pause preserves position without resetting, and Play resumes from pause point.
@@ -277,7 +285,7 @@ class SensorSessionPlaybackTest {
     assertThat(playPauseButton.isPlayingState).isTrue()
     assertThat(playPauseButton.text).isEmpty()
     assertThat(playPauseButton.icon).isEqualTo(AllIcons.Actions.Pause)
-    assertThat((playPauseButton as IconButton).tooltipText).isEqualTo("Pause")
+    assertThat((playPauseButton).tooltipText).isEqualTo("Pause")
     assertThat(playPauseButton.accessibleContext.accessibleName).isEqualTo("Pause")
     assertThat(slider.isEnabled).isTrue()
     assertThat(speedCombo.isEnabled).isTrue()
@@ -290,7 +298,7 @@ class SensorSessionPlaybackTest {
     assertThat(playPauseButton.isPlayingState).isFalse()
     assertThat(playPauseButton.text).isEmpty()
     assertThat(playPauseButton.icon).isEqualTo(AllIcons.Actions.Execute)
-    assertThat((playPauseButton as IconButton).tooltipText).isEqualTo("Play")
+    assertThat((playPauseButton).tooltipText).isEqualTo("Play")
     assertThat(playPauseButton.accessibleContext.accessibleName).isEqualTo("Play")
     assertThat(slider.isEnabled).isTrue()
     assertThat(speedCombo.isEnabled).isTrue()
@@ -441,12 +449,20 @@ class SensorSessionPlaybackTest {
             .setAltitudeM(30.0)
         )
       } else if (i == 2000) {
-        // Non-GPS location on the final record must not erase the coalesced GPS fix from record 1999.
-        recordBuilder.addLocations(
-          PositionProto.newBuilder()
-            .setProvider(PositionProvider.WIFI)
-            .setPoint(PointProto.newBuilder().setLatE7(100_000_000).setLngE7(200_000_000))
-        )
+        // Non-GPS locations (WIFI, legacy CELL_WITH_NEIGHBORS = 5, or omitted provider) on the final record must not erase the coalesced
+        // GPS fix from record 1999.
+        recordBuilder
+          .addLocations(
+            PositionProto.newBuilder()
+              .setProvider(PositionProvider.WIFI)
+              .setPoint(PointProto.newBuilder().setLatE7(100_000_000).setLngE7(200_000_000))
+          )
+          .addLocations(
+            PositionProto.newBuilder()
+              .setPoint(PointProto.newBuilder().setLatE7(110_000_000).setLngE7(210_000_000))
+              .setUnknownFields(UnknownFieldSet.newBuilder().mergeVarintField(PositionProto.PROVIDER_FIELD_NUMBER, 5).build())
+          )
+          .addLocations(PositionProto.newBuilder().setPoint(PointProto.newBuilder().setLatE7(120_000_000).setLngE7(220_000_000)))
       }
       sessionBuilder.addSensorRecords(recordBuilder)
     }
@@ -597,12 +613,19 @@ class SensorSessionPlaybackTest {
             .setPoint(PointProto.newBuilder().setLatE7(374_219_999).setLngE7(-1_220_840_575))
         )
       } else if (ts == 100_000_000L) {
-        // Non-GPS location before a checkpoint must not overwrite the earlier GPS fix in SeekCheckpoint.aggregatedBefore.
-        recordBuilder.addLocations(
-          PositionProto.newBuilder()
-            .setProvider(PositionProvider.WIFI)
-            .setPoint(PointProto.newBuilder().setLatE7(100_000_000).setLngE7(200_000_000))
-        )
+        // Non-GPS locations before a checkpoint must not overwrite the earlier GPS fix in SeekCheckpoint.aggregatedBefore.
+        recordBuilder
+          .addLocations(
+            PositionProto.newBuilder()
+              .setProvider(PositionProvider.WIFI)
+              .setPoint(PointProto.newBuilder().setLatE7(100_000_000).setLngE7(200_000_000))
+          )
+          .addLocations(
+            PositionProto.newBuilder()
+              .setPoint(PointProto.newBuilder().setLatE7(110_000_000).setLngE7(210_000_000))
+              .setUnknownFields(UnknownFieldSet.newBuilder().mergeVarintField(PositionProto.PROVIDER_FIELD_NUMBER, 5).build())
+          )
+          .addLocations(PositionProto.newBuilder().setPoint(PointProto.newBuilder().setLatE7(120_000_000).setLngE7(220_000_000)))
       }
       sessionBuilder.addSensorRecords(recordBuilder)
     }

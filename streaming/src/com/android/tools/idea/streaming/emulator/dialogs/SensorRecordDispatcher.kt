@@ -23,13 +23,13 @@ import com.android.emulation.control.incubating.VehiclePropStatus
 import com.android.emulation.control.incubating.VehiclePropValue
 import com.android.emulator.control.GpsState
 import com.android.emulator.control.ParameterValue
-import com.android.emulator.control.SensorSession.SensorRecord
-import com.android.emulator.control.SensorSession.SensorRecord.PositionProto
-import com.android.emulator.control.SensorSession.SensorRecord.PositionProto.PositionProvider
-import com.android.emulator.control.SensorSession.SessionMetadata
 import com.android.emulator.control.SensorValue
 import com.android.emulator.control.SensorValue.SensorType
 import com.android.tools.idea.streaming.emulator.EmulatorController
+import com.google.android.apps.automotive.sensing.sensorreplay.SensorSession.SensorRecord
+import com.google.android.apps.automotive.sensing.sensorreplay.SensorSession.SensorRecord.PositionProto
+import com.google.android.apps.automotive.sensing.sensorreplay.SensorSession.SensorRecord.PositionProto.PositionProvider
+import com.google.android.apps.automotive.sensing.sensorreplay.SensorSession.SessionMetadata
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 
@@ -182,4 +182,4 @@ private fun convertCarPropertyValue(propId: Int, valProto: SensorRecord.CarPrope
 }
 
 internal fun PositionProto.hasGpsPoint(): Boolean =
-  (provider == PositionProvider.GPS || provider == PositionProvider.GPS_INJECTED) && hasPoint()
+  hasProvider() && (provider == PositionProvider.GPS || provider == PositionProvider.GPS_INJECTED) && hasPoint()
